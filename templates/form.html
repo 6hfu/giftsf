@@ -195,15 +195,24 @@
 
         // 郵便番号で住所自動補完
         $('#ShippingPostalCode').on('blur', function() {
-            const postalCode = $(this).val().replace('-', '').trim();
-            if (postalCode.length !== 7 || !/^\d+$/.test(postalCode)) {
-                // 7桁数字でないなら住所欄クリア
+            const input = $(this).val().trim();
+            const zip = input.replace('-', '');
+        
+            const valid = /^\d{7}$/.test(input) || /^\d{3}-\d{4}$/.test(input);
+            if (!valid) {
+                alert('郵便番号の形式が正しくありません（0000000 または 000-0000）');
+                $('#ShippingPostalCode').val('');
                 $('#ShippingState, #ShippingCity, #ShippingStreet').val('');
                 return;
             }
-
+        
+            if (zip.length !== 7 || !/^\d+$/.test(zip)) {
+                $('#ShippingState, #ShippingCity, #ShippingStreet').val('');
+                return;
+            }
+        
             $.ajax({
-                url: `https://zipcloud.ibsnet.co.jp/api/search?zipcode=${postalCode}`,
+                url: `https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`,
                 dataType: 'jsonp',
                 success: function(response) {
                     if (response && response.results && response.results.length > 0) {
@@ -222,6 +231,7 @@
                 }
             });
         });
+
 
         // Field25__c 時間入力補助の初期値セット
         const now = new Date();
