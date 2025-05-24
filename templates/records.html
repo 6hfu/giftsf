@@ -20,12 +20,13 @@
         }
         th:nth-child(1), td:nth-child(1) { width: 130px; }
         th:nth-child(2), td:nth-child(2) { width: 110px; }
-        th:nth-child(3), td:nth-child(3) { width: 120px; }
-        th:nth-child(4), td:nth-child(4) { width: 160px; }
-        th:nth-child(5), td:nth-child(5),
-        th:nth-child(6), td:nth-child(6) { width: 110px; }
-        th:nth-child(7), td:nth-child(7),
-        th:nth-child(8), td:nth-child(8) {
+        th:nth-child(3), td:nth-child(2) { width: 110px; }
+        th:nth-child(4), td:nth-child(3) { width: 120px; }
+        th:nth-child(5), td:nth-child(4) { width: 160px; }
+        th:nth-child(6), td:nth-child(5),
+        th:nth-child(7), td:nth-child(6) { width: 110px; }
+        th:nth-child(8), td:nth-child(7),
+        th:nth-child(9), td:nth-child(8) {
             width: 300px;
             max-width: 300px;
             white-space: pre-wrap;
@@ -77,6 +78,7 @@
                 <thead>
                     <tr>
                         <th scope="col">名前</th>
+                        <th scope="col">商材名</th>
                         <th scope="col">受注日時</th>
                         <th scope="col">前確ステータス</th>
                         <th scope="col">次回コール</th>
@@ -90,6 +92,7 @@
                     {% for record in records %}
                     <tr>
                         <td>{{ record.Name }}</td>
+                        <td>{{ record.Field106__c or '' }}</td> 
                         <td>{{ record.timetorihiki__c_formatted }}</td>
                         <td>{{ record.Field101__c or '' }}</td>
                         <td>{{ record.Field97__c_formatted }}</td>
