@@ -18,8 +18,6 @@ load_dotenv()  # .envファイルの内容を読み込む
 app = Flask(__name__)
 app.secret_key = "4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d"
 
-# CSRFを有効化
-csrf = CSRFProtect(app)
 
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
