@@ -101,7 +101,10 @@
             {% if api_name == 'ShippingPostalCode' %}
                 <div class="mb-3">
                     <label for="ShippingPostalCode" class="form-label">郵便番号</label>
-                    <input type="text" class="form-control" id="ShippingPostalCode" name="ShippingPostalCode" placeholder="例: 1000001" />
+                    <input type="text" class="form-control" id="ShippingPostalCode" name="ShippingPostalCode"
+                       placeholder="例: 1000001 または 100-0001"
+                       pattern="^\d{7}$|^\d{3}-\d{4}$"
+                       title="0000000 または 000-0000 の形式で入力してください"  />
                 </div>
                 <div class="mb-3">
                     <label for="ShippingState" class="form-label">都道府県</label>
