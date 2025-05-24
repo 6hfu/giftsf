@@ -228,7 +228,7 @@ def records():
 
     try:
         soql = """
-            SELECT Name, timetorihiki__c, Field101__c, Field97__c, CLOK__c, Field118__c, Field171__c, Field172__c
+            SELECT Name, Field106__c, timetorihiki__c, Field101__c, Field97__c, CLOK__c, Field118__c, Field171__c, Field172__c
             FROM Account
             WHERE Field207__c = '{}'
             ORDER BY CreatedDate DESC
