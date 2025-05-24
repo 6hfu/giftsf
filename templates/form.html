@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <title>Salesforce レコード作成フォーム</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet" />
+
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: #f5f7fa;
+            padding: 2rem;
+        }
+
+        .form-container {
+            background: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            padding: 2rem 2.5rem;
+            max-width: 800px;
+            margin: auto;
+        }
+
+        h2 {
+            font-weight: 700;
+            color: #343a40;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .form-control,
+        .form-select,
+        textarea {
+            border-radius: 0.6rem;
+            padding: 0.75rem;
+            border: 1px solid #ced4da;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus,
+        .form-select:focus,
+        textarea:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+
+        textarea {
+            min-height: 160px;
+            resize: vertical;
+        }
+
+        button.btn-primary {
+            padding: 0.75rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+        }
+
+        .mb-3 {
+            margin-bottom: 1.25rem !important;
+        }
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <h2>Salesforce レコード作成</h2>
+        <form method="POST" action="/submit">
+        {% set order = [
+            'Name', 'X2__c', 'Field76__c', 'Field78__c', 'Field56__c',
+            'Field22__c', 'Field23__c', 'Field24__c', 'Field25__c', 'Field8__c',
+            'Field27__c', 'Field28__c', 'Field30__c', 'Field31__c', 'Field41__c',
+            'Field40__c', 'Field6__c', 'ShippingPostalCode', 'Field39__c',
+            'Field35__c', 'Field36__c', 'Field37__c', 'Field38__c',
+            'Field9__c', 'Field12__c', 'Field14__c',
+            'KDDI__c', 'KDDI1__c', 'NTT__c', 'NTT1__c', 'Field184__c'
+        ] %}
+        
+        {% for api_name in order %}
+            {% set field = fields.get(api_name) %}
+            {% if api_name == 'ShippingPostalCode' %}
+                <div class="mb-3">
+                    <label for="ShippingPostalCode" class="form-label">郵便番号</label>
+                    <input type="text" class="form-control" id="ShippingPostalCode" name="ShippingPostalCode" placeholder="例: 1000001" />
+                </div>
+                <div class="mb-3">
+                    <label for="ShippingState" class="form-label">都道府県</label>
+                    <input type="text" class="form-control" id="ShippingState" name="ShippingState" readonly />
+                </div>
+                <div class="mb-3">
+                    <label for="ShippingCity" class="form-label">市区郡</label>
+                    <input type="text" class="form-control" id="ShippingCity" name="ShippingCity" readonly />
+                </div>
+                <div class="mb-3">
+                    <label for="ShippingStreet" class="form-label">町名・番地</label>
+                    <input type="text" class="form-control" id="ShippingStreet" name="ShippingStreet" readonly />
+                </div>
+            {% elif api_name == 'Field25__c' %}
+                <div class="mb-3">
+                    <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                    <div class="d-flex gap-2">
+                        <select class="form-select" id="{{ api_name }}_hour" name="{{ api_name }}_hour" style="max-width: 100px;">
+                            {% for h in range(0, 24) %}
+                                <option value="{{ "%02d"|format(h) }}">{{ "%02d"|format(h) }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="align-self-center">:</span>
+                        <select class="form-select" id="{{ api_name }}_minute" name="{{ api_name }}_minute" style="max-width: 100px;">
+                            {% for m in range(0, 60, 5) %}
+                                <option value="{{ "%02d"|format(m) }}">{{ "%02d"|format(m) }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <input type="hidden" id="{{ api_name }}" name="{{ api_name }}" />
+                </div>
+            {% elif api_name == 'Field76__c' %}
+                <div class="mb-3">
+                    <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                    <select class="form-select select2" id="{{ api_name }}" name="{{ api_name }}">
+                        <option value="">選択してください</option>
+                        {% for key in field76_map.keys() %}
+                            <option value="{{ key }}">{{ key }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% elif field %}
+                {% if field.type == 'textarea' %}
+                    <div class="mb-3">
+                        <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                        <textarea class="form-control" id="{{ api_name }}" name="{{ api_name }}"></textarea>
+                    </div>
+                {% elif field.type == 'date' %}
+                    <div class="mb-3">
+                        <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                        <input type="date" class="form-control" id="{{ api_name }}" name="{{ api_name }}"
+                            {% if api_name == 'Field24__c' %}value="{{ today }}"{% endif %} />
+                    </div>
+                {% elif field.type == 'datetime' %}
+                    <div class="mb-3">
+                        <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                        <input type="datetime-local" class="form-control" id="{{ api_name }}" name="{{ api_name }}" />
+                    </div>
+                {% elif field.picklistValues %}
+                    <div class="mb-3">
+                        <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                        <select class="form-select" id="{{ api_name }}" name="{{ api_name }}">
+                            <option value="">選択してください</option>
+                            {% for val in field.picklistValues %}
+                                <option value="{{ val }}">{{ val }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% else %}
+                    <div class="mb-3">
+                        <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                        <input type="text" class="form-control" id="{{ api_name }}" name="{{ api_name }}" />
+                    </div>
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary">作成</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Select2初期化
+        $('.select2').select2({ width: '100%' });
+
+        // 郵便番号で住所自動補完
+        $('#ShippingPostalCode').on('blur', function() {
+            const postalCode = $(this).val().replace('-', '').trim();
+            if (postalCode.length !== 7 || !/^\d+$/.test(postalCode)) {
+                // 7桁数字でないなら住所欄クリア
+                $('#ShippingState, #ShippingCity, #ShippingStreet').val('');
+                return;
+            }
+
+            $.ajax({
+                url: `https://zipcloud.ibsnet.co.jp/api/search?zipcode=${postalCode}`,
+                dataType: 'jsonp',
+                success: function(response) {
+                    if (response && response.results && response.results.length > 0) {
+                        const result = response.results[0];
+                        $('#ShippingState').val(result.address1);
+                        $('#ShippingCity').val(result.address2);
+                        $('#ShippingStreet').val(result.address3);
+                    } else {
+                        alert('該当する住所が見つかりませんでした。');
+                        $('#ShippingState, #ShippingCity, #ShippingStreet').val('');
+                    }
+                },
+                error: function() {
+                    alert('住所の取得に失敗しました。');
+                    $('#ShippingState, #ShippingCity, #ShippingStreet').val('');
+                }
+            });
+        });
+
+        // Field25__c 時間入力補助の初期値セット
+        const now = new Date();
+        const hour = now.getHours().toString().padStart(2, '0');
+        const minute = (Math.floor(now.getMinutes() / 5) * 5).toString().padStart(2, '0');
+
+        $('#Field25__c_hour').val(hour);
+        $('#Field25__c_minute').val(minute);
+
+        // Field25__c の隠しフィールドに値をセットする関数
+        function updateField25() {
+            const h = $('#Field25__c_hour').val();
+            const m = $('#Field25__c_minute').val();
+            $('#Field25__c').val(`${h}:${m}`);
+        }
+
+        $('#Field25__c_hour, #Field25__c_minute').on('change', updateField25);
+        updateField25();
+
+        // --- ここから必須チェック処理 ---
+
+        const requiredFields = [
+            'Name',
+            'Field76__c',
+            'Field78__c',
+            'Field56__c',
+            'Field22__c',
+            'Field23__c',
+            'Field24__c',
+            'Field25__c'
+        ];
+
+        $('form').on('submit', function(e) {
+            let isValid = true;
+
+            // まず、全ての対象フィールドの赤枠（エラー表示）をリセット
+            requiredFields.forEach(function(field) {
+                if(field === 'Field25__c'){
+                    // Field25__cは隠しフィールドなので、hour/minuteのselectを赤枠にする
+                    $('#Field25__c_hour, #Field25__c_minute').removeClass('is-invalid');
+                } else if(field === 'Field76__c') {
+                    // select2は隠れてる本体inputにエラー付けるのは難しいのでselect2コンテナに付ける
+                    $('#Field76__c').removeClass('is-invalid');
+                    $('#select2-Field76__c-container').parent().removeClass('is-invalid');
+                } else {
+                    $('#' + field).removeClass('is-invalid');
+                }
+            });
+
+            // 各必須項目の入力チェック
+            requiredFields.forEach(function(field) {
+                let val = '';
+                if(field === 'Field25__c'){
+                    val = $('#Field25__c').val().trim();
+                    if(!val){
+                        // 赤枠を時間selectに付与
+                        $('#Field25__c_hour, #Field25__c_minute').addClass('is-invalid');
+                        isValid = false;
+                    }
+                } else if(field === 'Field76__c'){
+                    val = $('#Field76__c').val();
+                    if(!val){
+                        // 赤枠をselect2の表示部分に付与
+                        $('#Field76__c').addClass('is-invalid');
+                        $('#select2-Field76__c-container').parent().addClass('is-invalid');
+                        isValid = false;
+                    }
+                } else {
+                    val = $('#' + field).val();
+                    if(!val || val.trim() === ''){
+                        $('#' + field).addClass('is-invalid');
+                        isValid = false;
+                    }
+                }
+            });
+
+            if (!isValid) {
+                alert('未入力の必須項目があります。赤枠の項目を入力してください。');
+                e.preventDefault();
+                return false;
+            }
+        });
+    });
+</script>
+
+<style>
+    /* 赤枠のエラースタイル */
+    .is-invalid {
+        border-color: #dc3545 !important;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+    }
+    /* select2用 赤枠対応 */
+    .select2-container.is-invalid .select2-selection {
+        border-color: #dc3545 !important;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+    }
+</style>
+
+
+
+</body>
+</html>
