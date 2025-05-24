@@ -144,12 +144,16 @@ def submit():
     form_data['Field207__c'] = session.get('username', None)
 
     for date_field in ['Field24__c', 'Field41__c']:
-        if form_data.get(date_field):
+        val = form_data.get(date_field)
+        if val:
             try:
-                dt = datetime.strptime(form_data[date_field], "%Y-%m-%d")
+                dt = datetime.strptime(val, "%Y-%m-%d")
                 form_data[date_field] = dt.strftime("%Y-%m-%d")
             except Exception:
                 form_data[date_field] = None
+        else:
+            form_data[date_field] = None  # 空の場合も明示的にNone
+
 
     input_time_str = form_data.get("Field25__c")
     if input_time_str:
