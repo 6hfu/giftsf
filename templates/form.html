@@ -102,9 +102,10 @@
                 <div class="mb-3">
                     <label for="ShippingPostalCode" class="form-label">郵便番号</label>
                     <input type="text" class="form-control" id="ShippingPostalCode" name="ShippingPostalCode"
-                       placeholder="例: 1000001 または 100-0001"
-                       pattern="^\d{7}$|^\d{3}-\d{4}$"
-                       title="0000000 または 000-0000 の形式で入力してください"  />
+                        placeholder="例: 1000001 または 100-0001"
+                        pattern="^\d{7}$|^\d{3}-\d{4}$"
+                        title="0000000 または 000-0000 の形式で入力してください" />
+                    <div id="zip-warning" class="mt-2"></div> <!-- エラーメッセージ表示用 -->
                 </div>
                 <div class="mb-3">
                     <label for="ShippingState" class="form-label">都道府県</label>
@@ -189,52 +190,44 @@
 </div>
 
 <script>
-    $(document).ready(function() {
-        // Select2初期化
-        $('.select2').select2({ width: '100%' });
+        $(document).ready(function () {
+            $('.select2').select2({ width: '100%' });
     
-        // 郵便番号で住所自動補完
-        $('#ShippingPostalCode').on('blur', function() {
-            const input = $(this).val().trim();
+            $('#ShippingPostalCode').on('blur', function () {
+                const input = $(this).val().trim();
+                const $warning = $('#zip-warning');
+                $warning.text(''); // 前のメッセージをクリア
     
-            if (input === '') {
-                // 空欄なら何もしない（エラー表示しない）
-                return;
-            }
+                if (input === '') return;
     
-            const valid = /^\d{7}$|^\d{3}-\d{4}$/.test(input);
-            if (!valid) {
-                alert('郵便番号の形式が正しくありません（0000000 または 000-0000）');
-                return;
-            }
-    
-            const zip = input.replace('-', '');
-            if (zip.length !== 7 || !/^\d+$/.test(zip)) {
-                // 不正な数値構成のZIP（この場合も何もしない）
-                return;
-            }
-    
-            $.ajax({
-                url: `https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`,
-                dataType: 'jsonp',
-                success: function(response) {
-                    if (response && response.results && response.results.length > 0) {
-                        const result = response.results[0];
-                        $('#ShippingState').val(result.address1);
-                        $('#ShippingCity').val(result.address2);
-                        $('#ShippingStreet').val(result.address3);
-                    } else {
-                        alert('該当する住所が見つかりませんでした。');
-                        $('#ShippingState, #ShippingCity, #ShippingStreet').val('');
-                    }
-                },
-                error: function() {
-                    alert('住所の取得に失敗しました。');
-                    $('#ShippingState, #ShippingCity, #ShippingStreet').val('');
+                const valid = /^\d{7}$|^\d{3}-\d{4}$/.test(input);
+                if (!valid) {
+                    $warning.text('郵便番号の形式が正しくありません（0000000 または 000-0000）');
+                    return;
                 }
+    
+                const zip = input.replace('-', '');
+                if (zip.length !== 7 || !/^\d+$/.test(zip)) return;
+    
+                $.ajax({
+                    url: `https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`,
+                    dataType: 'jsonp',
+                    success: function (response) {
+                        if (response && response.results && response.results.length > 0) {
+                            const result = response.results[0];
+                            $('#ShippingState').val(result.address1);
+                            $('#ShippingCity').val(result.address2);
+                            $('#ShippingStreet').val(result.address3);
+                        } else {
+                            $warning.text('該当する住所が見つかりませんでした。');
+                        }
+                    },
+                    error: function () {
+                        $warning.text('住所検索中にエラーが発生しました。');
+                    }
+                });
             });
         });
-    });
 
 
         // Field25__c 時間入力補助の初期値セット
@@ -332,7 +325,17 @@
         border-color: #dc3545 !important;
         box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
     }
+
+    #zip-warning {
+        color: red;
+        font-weight: bold;
+        font-size: 0.95rem;
+    }
+
+    
 </style>
+
+            
 
 
 
