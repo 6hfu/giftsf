@@ -1,39 +1,27 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from simple_salesforce import Salesforce
-import os
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta, timezone
 import requests
 from functools import wraps
-from flask import render_template, session
-from flask import Flask, render_template, session, redirect, url_for
-from datetime import datetime
-import re
 from dotenv import load_dotenv
 import os
-from flask import Flask
 from flask_wtf import CSRFProtect
 
-load_dotenv()  # .envファイルの内容を読み込む
+# 環境変数読み込み
+load_dotenv()
 
+# Flask設定
 app = Flask(__name__)
 app.secret_key = "4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d"
-
-
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=True,  # HTTPSのみ
+    SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_SAMESITE='Lax'
 )
 
-
-field76_map = {
-    "AU光_007": "a05IU00001CHHNJYA5",
-    "AU光_008": "a05IU00001CHHMwYAP",
-    "NURO光_002": "a05IU00001CHHNiYAP",
-    "So-net光_002": "a05IU00001CHHNDYA5",
-}
-
-BASIC_AUTH_PASSWORD = "gift2025"  # パスワードは変わらず利用
+# セッションタイムアウト時間（8時間）
+SESSION_TIMEOUT_HOURS = 8
+JST = timezone(timedelta(hours=9))  # 日本時間
 
 # Salesforce接続
 sf = Salesforce(
@@ -43,6 +31,29 @@ sf = Salesforce(
     domain="login"
 )
 
+field76_map = {
+    "AU光_007": "a05IU00001CHHNJYA5",
+    "AU光_008": "a05IU00001CHHMwYAP",
+    "NURO光_002": "a05IU00001CHHNiYAP",
+    "So-net光_002": "a05IU00001CHHNDYA5",
+}
+
+BASIC_AUTH_PASSWORD = "gift2025"
+
+# セッション有効期限確認・更新
+@app.before_request
+def check_session_timeout():
+    if 'username' in session:
+        last_activity = session.get('last_activity')
+        now = datetime.now(JST)
+        if last_activity:
+            last_activity_dt = datetime.fromisoformat(last_activity)
+            if now - last_activity_dt > timedelta(hours=SESSION_TIMEOUT_HOURS):
+                session.clear()
+                flash("セッションの有効期限が切れました。再ログインしてください。")
+                return redirect(url_for('login'))
+        # アクティビティ更新
+        session['last_activity'] = now.isoformat()
 
 def check_auth(username, password):
     if password != BASIC_AUTH_PASSWORD:
@@ -75,8 +86,7 @@ def get_address_from_postalcode(postal_code):
         data = res.json()
         if data['results']:
             result = data['results'][0]
-            address = result['address1'] + result['address2'] + result['address3']
-            return address
+            return result['address1'] + result['address2'] + result['address3']
         else:
             return ""
     except Exception:
@@ -104,19 +114,16 @@ def get_field_descriptions():
             }
     return field_defs
 
-
-
-
 @app.route('/')
 @login_required
 def index():
-    return redirect(url_for('menu_page'))  # '/'に来たら'/menu'にリダイレクト
+    return redirect(url_for('menu_page'))
 
 @app.route('/form')
 @login_required
 def form():
     fields = get_field_descriptions()
-    today = date.today().isoformat()
+    today = datetime.now(JST).date().isoformat()
     postal_code = request.args.get('ShippingPostalCode', '')
     postal_address = get_address_from_postalcode(postal_code)
     return render_template('form.html',
@@ -152,8 +159,7 @@ def submit():
             except Exception:
                 form_data[date_field] = None
         else:
-            form_data[date_field] = None  # 空の場合も明示的にNone
-
+            form_data[date_field] = None
 
     input_time_str = form_data.get("Field25__c")
     if input_time_str:
@@ -202,6 +208,7 @@ def login():
         password = request.form.get('password', '').strip()
         if check_auth(username, password):
             session['username'] = username
+            session['last_activity'] = datetime.now(JST).isoformat()
             flash('ログイン成功しました')
             next_page = request.args.get('next')
             return redirect(next_page or url_for('menu_page'))
@@ -216,6 +223,7 @@ def logout():
     session.clear()
     flash('ログアウトしました')
     return redirect(url_for('login'))
+
 
 
 @app.route('/records')
