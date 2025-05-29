@@ -20,7 +20,7 @@ app.config.update(
 )
 
 # セッションタイムアウト時間（8時間）
-SESSION_TIMEOUT_HOURS = 0.05
+SESSION_TIMEOUT_HOURS = 4
 JST = timezone(timedelta(hours=9))  # 日本時間
 
 # Salesforce接続
