@@ -83,10 +83,11 @@
     </style>
 </head>
 <body>
-
 <div class="form-container">
     <h2>Salesforce レコード作成</h2>
-        <form method="POST" action="/submit">
+    <p class="text-center text-muted mb-4">現在 <strong>{{ username }}</strong> さんがログインしています</p>
+    
+    <form method="POST" action="/submit">
         {% set order = [
             'Name', 'X2__c', 'Field76__c', 'Field78__c', 'Field56__c',
             'Field22__c', 'Field23__c', 'Field24__c', 'Field25__c', 'Field8__c',
