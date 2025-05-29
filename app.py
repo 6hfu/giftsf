@@ -126,6 +126,7 @@ def form():
     today = datetime.now(JST).date().isoformat()
     postal_code = request.args.get('ShippingPostalCode', '')
     postal_address = get_address_from_postalcode(postal_code)
+    display_name = session.get('display_name', 'ゲスト')  # セッションからユーザー名を取得
     return render_template('form.html',
                            fields=fields,
                            import_fields=list(fields.keys()),
@@ -133,7 +134,9 @@ def form():
                            basic_auth_user_id=session.get('username', ''),
                            today=today,
                            postal_code=postal_code,
-                           postal_address=postal_address)
+                           postal_address=postal_address,
+                           username=display_name)  # ← 追加
+
 
 @app.route('/submit', methods=['POST'])
 @login_required
