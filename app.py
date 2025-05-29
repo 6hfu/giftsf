@@ -6,6 +6,8 @@ from functools import wraps
 from dotenv import load_dotenv
 import os
 from flask_wtf import CSRFProtect
+import pytz
+import re
 
 # 環境変数読み込み
 load_dotenv()
@@ -251,6 +253,16 @@ def logout():
 
 
 
+def format_jst(datetime_str, fmt="%Y/%m/%d %H:%M"):
+    try:
+        # 'Z'（UTC）を '+0000' に置換
+        datetime_str = re.sub(r'Z$', '+0000', datetime_str)
+        dt_utc = datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%S.%f%z")
+        dt_jst = dt_utc.astimezone(pytz.timezone("Asia/Tokyo"))
+        return dt_jst.strftime(fmt)
+    except Exception:
+        return datetime_str  # エラー時はそのまま返す
+
 @app.route('/records')
 @login_required
 def records():
@@ -260,42 +272,26 @@ def records():
         return redirect(url_for('login'))
 
     try:
-        soql = """
+        soql = f"""
             SELECT Name, Field106__c, timetorihiki__c, Field101__c, Field97__c, CLOK__c, Field118__c, Field171__c, Field172__c
             FROM Account
-            WHERE Field207__c = '{}'
+            WHERE Field207__c = '{login_id}'
             ORDER BY CreatedDate DESC
             LIMIT 100
-        """.format(login_id)
+        """
 
         result = sf.query(soql)
         records = result.get('records', [])
 
         for record in records:
-            # timetorihiki__c を YYYY/MM/DD に変換
-            dt_str = record.get('timetorihiki__c')
-            if dt_str:
-                try:
-                    dt = datetime.strptime(dt_str, '%Y-%m-%dT%H:%M:%S.%f%z')
-                    record['timetorihiki__c_formatted'] = dt.strftime('%Y/%m/%d')
-                except Exception:
-                    record['timetorihiki__c_formatted'] = dt_str
-            else:
-                record['timetorihiki__c_formatted'] = ''
+            # timetorihiki__c → JST日付形式
+            record['timetorihiki__c_formatted'] = format_jst(record.get('timetorihiki__c', ''), fmt="%Y/%m/%d")
 
-            # Field97__c を YYYY/MM/DD HH:MM 形式に変換（日時両対応）
-            dt97_str = record.get('Field97__c')
-            if dt97_str:
-                try:
-                    dt97_fixed = re.sub(r'Z$', '+0000', dt97_str)
-                    dt97 = datetime.strptime(dt97_fixed, '%Y-%m-%dT%H:%M:%S.%f%z')
-                    record['Field97__c_formatted'] = dt97.strftime('%Y/%m/%d %H:%M')
-                except Exception:
-                    record['Field97__c_formatted'] = dt97_str
-            else:
-                record['Field97__c_formatted'] = ''
+            # Field97__c → JST日時形式
+            record['Field97__c_formatted'] = format_jst(record.get('Field97__c', ''), fmt="%Y/%m/%d %H:%M")
 
         return render_template('records.html', records=records)
+
     except Exception as e:
         import traceback
         traceback.print_exc()
