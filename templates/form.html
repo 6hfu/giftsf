@@ -86,7 +86,7 @@
 <div class="form-container">
     <h2>Salesforce レコード作成</h2>
     <p class="text-center text-muted mb-4">現在 <strong>{{ username }}</strong> さんがログインしています</p>
-    <a href="{{ url_for('menu') }}">メニューに戻る</a>
+    <a href="{{ url_for('menu_page') }}">メニューに戻る</a>
 
     <form method="POST" action="/submit">
         {% set order = [
