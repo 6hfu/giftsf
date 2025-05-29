@@ -80,6 +80,35 @@
             margin-bottom: 1.25rem !important;
         }
 
+        .custom-button {
+        display: inline-block;
+        padding: 8px 16px;
+        font-size: 14px;
+        color: #007bff;
+        border: 2px solid #007bff;
+        border-radius: 6px;
+        text-decoration: none;
+        background-color: white;
+        transition: all 0.3s ease;
+        font-weight: bold;
+        }
+        
+        .custom-button:hover {
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            box-shadow: 0 4px 6px rgba(0, 123, 255, 0.2);
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .mb-4 {
+            margin-bottom: 1.5rem;
+        }
+
+
     </style>
 </head>
 <body>
@@ -87,10 +116,11 @@
     <h2>Salesforce レコード作成</h2>
     <p class="text-center text-muted mb-4">現在 <strong>{{ username }}</strong> さんがログインしています</p>
     <div class="text-center mb-4">
-        <a href="{{ url_for('menu_page') }}" class="btn btn-outline-primary btn-sm">
+        <a href="{{ url_for('menu_page') }}" class="custom-button">
             ← メニューに戻る
         </a>
     </div>
+
 
     <form method="POST" action="/submit">
         {% set order = [
