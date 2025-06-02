@@ -227,66 +227,55 @@
 </div>
 
 <script>
-        $(document).ready(function () {
-            $('.select2').select2({ width: '100%' });
-    
-            $('#ShippingPostalCode').on('blur', function () {
-                const input = $(this).val().trim();
-                const $warning = $('#zip-warning');
-                $warning.text(''); // 前のメッセージをクリア
-    
-                if (input === '') return;
-    
-                const valid = /^\d{7}$|^\d{3}-\d{4}$/.test(input);
-                if (!valid) {
-                    $warning.text('郵便番号の形式が正しくありません（0000000 または 000-0000）');
-                    return;
-                }
-    
-                const zip = input.replace('-', '');
-                if (zip.length !== 7 || !/^\d+$/.test(zip)) return;
-    
-                $.ajax({
-                    url: `https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`,
-                    dataType: 'jsonp',
-                    success: function (response) {
-                        if (response && response.results && response.results.length > 0) {
-                            const result = response.results[0];
-                            $('#ShippingState').val(result.address1);
-                            $('#ShippingCity').val(result.address2);
-                            $('#ShippingStreet').val(result.address3);
-                        } else {
-                            $warning.text('該当する住所が見つかりませんでした。');
-                        }
-                    },
-                    error: function () {
-                        $warning.text('住所検索中にエラーが発生しました。');
+    $(document).ready(function () {
+        // select2 初期化
+        $('.select2').select2({ width: '100%' });
+
+        // Enterキーでフォームが送信されるのを防止（Textareaを除く）
+        $('form').on('keydown', function (e) {
+            if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // 郵便番号入力後の住所自動補完
+        $('#ShippingPostalCode').on('blur', function () {
+            const input = $(this).val().trim();
+            const $warning = $('#zip-warning');
+            $warning.text('');
+
+            if (input === '') return;
+
+            const valid = /^\d{7}$|^\d{3}-\d{4}$/.test(input);
+            if (!valid) {
+                $warning.text('郵便番号の形式が正しくありません（0000000 または 000-0000）');
+                return;
+            }
+
+            const zip = input.replace('-', '');
+            if (zip.length !== 7 || !/^\d+$/.test(zip)) return;
+
+            $.ajax({
+                url: `https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`,
+                dataType: 'jsonp',
+                success: function (response) {
+                    if (response && response.results && response.results.length > 0) {
+                        const result = response.results[0];
+                        $('#ShippingState').val(result.address1);
+                        $('#ShippingCity').val(result.address2);
+                        $('#ShippingStreet').val(result.address3);
+                    } else {
+                        $warning.text('該当する住所が見つかりませんでした。');
                     }
-                });
+                },
+                error: function () {
+                    $warning.text('住所検索中にエラーが発生しました。');
+                }
             });
         });
 
-
-        // Field25__c 時間入力補助の初期値セット
-        const now = new Date();
-        const hour = now.getHours().toString().padStart(2, '0');
-        const minute = (Math.floor(now.getMinutes() / 5) * 5).toString().padStart(2, '0');
-
-        $('#Field25__c_hour').val(hour);
-        $('#Field25__c_minute').val(minute);
-
-        // Field25__c の隠しフィールドに値をセットする関数
-        function updateField25() {
-            const h = $('#Field25__c_hour').val();
-            const m = $('#Field25__c_minute').val();
-            $('#Field25__c').val(`${h}:${m}`);
-        }
-
-        $('#Field25__c_hour, #Field25__c_minute').on('change', updateField25);
-        updateField25();
-
-        // --- ここから必須チェック処理 ---
-
+        // フォーム送信時の必須項目チェック
         const requiredFields = [
             'Name',
             'Field76__c',
@@ -298,16 +287,13 @@
             'Field25__c'
         ];
 
-        $('form').on('submit', function(e) {
+        $('form').on('submit', function (e) {
             let isValid = true;
 
-            // まず、全ての対象フィールドの赤枠（エラー表示）をリセット
-            requiredFields.forEach(function(field) {
-                if(field === 'Field25__c'){
-                    // Field25__cは隠しフィールドなので、hour/minuteのselectを赤枠にする
+            requiredFields.forEach(function (field) {
+                if (field === 'Field25__c') {
                     $('#Field25__c_hour, #Field25__c_minute').removeClass('is-invalid');
-                } else if(field === 'Field76__c') {
-                    // select2は隠れてる本体inputにエラー付けるのは難しいのでselect2コンテナに付ける
+                } else if (field === 'Field76__c') {
                     $('#Field76__c').removeClass('is-invalid');
                     $('#select2-Field76__c-container').parent().removeClass('is-invalid');
                 } else {
@@ -315,27 +301,24 @@
                 }
             });
 
-            // 各必須項目の入力チェック
-            requiredFields.forEach(function(field) {
+            requiredFields.forEach(function (field) {
                 let val = '';
-                if(field === 'Field25__c'){
+                if (field === 'Field25__c') {
                     val = $('#Field25__c').val().trim();
-                    if(!val){
-                        // 赤枠を時間selectに付与
+                    if (!val) {
                         $('#Field25__c_hour, #Field25__c_minute').addClass('is-invalid');
                         isValid = false;
                     }
-                } else if(field === 'Field76__c'){
+                } else if (field === 'Field76__c') {
                     val = $('#Field76__c').val();
-                    if(!val){
-                        // 赤枠をselect2の表示部分に付与
+                    if (!val) {
                         $('#Field76__c').addClass('is-invalid');
                         $('#select2-Field76__c-container').parent().addClass('is-invalid');
                         isValid = false;
                     }
                 } else {
                     val = $('#' + field).val();
-                    if(!val || val.trim() === ''){
+                    if (!val || val.trim() === '') {
                         $('#' + field).addClass('is-invalid');
                         isValid = false;
                     }
@@ -348,8 +331,25 @@
                 return false;
             }
         });
-    
+
+        // 時間の初期値セットと連動処理
+        const now = new Date();
+        const hour = now.getHours().toString().padStart(2, '0');
+        const minute = (Math.floor(now.getMinutes() / 5) * 5).toString().padStart(2, '0');
+        $('#Field25__c_hour').val(hour);
+        $('#Field25__c_minute').val(minute);
+
+        function updateField25() {
+            const h = $('#Field25__c_hour').val();
+            const m = $('#Field25__c_minute').val();
+            $('#Field25__c').val(`${h}:${m}`);
+        }
+
+        $('#Field25__c_hour, #Field25__c_minute').on('change', updateField25);
+        updateField25();
+    });
 </script>
+
 
 <style>
     /* 赤枠のエラースタイル */
