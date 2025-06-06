@@ -350,17 +350,21 @@
     });
 
     
-    $(document).ready(function () {
-        // select2 初期化
-        $('.select2').select2({ width: '100%' });
-
-        // フォーム送信時にボタンを無効化して多重送信を防止
-        $('form').on('submit', function () {
-            $(this).find('button[type="submit"]')
-                .prop('disabled', true)
-                .text('送信中...');
-        });
+    $('form').on('submit', function (e) {
+        const form = this;
+    
+        // HTML5 バリデーションのチェック（入力漏れなど）
+        if (!form.checkValidity()) {
+            // フォームが無効な場合は処理を中断
+            return;
+        }
+    
+        // 送信ボタンを無効化し、テキスト変更（任意）
+        $(form).find('button[type="submit"]')
+            .prop('disabled', true)
+            .text('送信中...');
     });
+
 </script>
 
 
