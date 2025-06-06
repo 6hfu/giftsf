@@ -353,17 +353,17 @@
     $('form').on('submit', function (e) {
         const form = this;
     
-        // HTML5 バリデーションのチェック（入力漏れなど）
-        if (!form.checkValidity()) {
-            // フォームが無効な場合は処理を中断
-            return;
-        }
+        if (!form.checkValidity()) return;
     
-        // 送信ボタンを無効化し、テキスト変更（任意）
-        $(form).find('button[type="submit"]')
-            .prop('disabled', true)
-            .text('送信中...');
+        const $btn = $(form).find('button[type="submit"]');
+        $btn.prop('disabled', true).text('送信中...');
+    
+        // 10秒後に再有効化
+        setTimeout(() => {
+            $btn.prop('disabled', false).text('送信');
+        }, 10000);
     });
+
 
 </script>
 
