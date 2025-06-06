@@ -348,6 +348,19 @@
         $('#Field25__c_hour, #Field25__c_minute').on('change', updateField25);
         updateField25();
     });
+
+    
+    $(document).ready(function () {
+        // select2 初期化
+        $('.select2').select2({ width: '100%' });
+
+        // フォーム送信時にボタンを無効化して多重送信を防止
+        $('form').on('submit', function () {
+            $(this).find('button[type="submit"]')
+                .prop('disabled', true)
+                .text('送信中...');
+        });
+    });
 </script>
 
 
