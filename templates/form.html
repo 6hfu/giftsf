@@ -188,6 +188,19 @@
                 {% if field.type == 'textarea' %}
                     <div class="mb-3">
                         <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+            
+                        <!-- ▼ テンプレート選択と反映ボタン -->
+                        <div class="input-group mb-2">
+                            <select class="form-select" id="template-select-{{ api_name }}">
+                                <option value="">テンプレートを選択</option>
+                                <option value="sonet_new">ソネット新設</option>
+                                <option value="sonet_change">ソネット事業変</option>
+                                <option value="au_hikari">AU光</option>
+                            </select>
+                            <button type="button" class="btn btn-secondary" onclick="insertTemplate('{{ api_name }}')">反映</button>
+                        </div>
+            
+                        <!-- ▼ テキストエリア -->
                         <textarea class="form-control" id="{{ api_name }}" name="{{ api_name }}"></textarea>
                     </div>
                 {% elif field.type == 'date' %}
@@ -363,6 +376,40 @@
             $btn.prop('disabled', false).text('送信');
         }, 10000);
     });
+
+
+
+    
+function insertTemplate(apiName) {
+    const textarea = document.getElementById(apiName);
+    const select = document.getElementById(`template-select-${apiName}`);
+    const selected = select.value;
+
+    // テンプレート内容
+    const templates = {
+        sonet_new: `・現状料金：
+・案内料金：
+・アウト内容：
+・好感触ポイント：`,
+
+        sonet_change: `・現状料金：
+・案内料金：
+・アウト内容：
+・好感触ポイント：`,
+
+        au_hikari: `・現状料金：
+・案内料金：
+・アウト内容：
+・好感触ポイント：`
+    };
+
+    if (selected && templates[selected]) {
+        const existingText = textarea.value.trim();
+        const separator = existingText ? "\n\n" : "";
+        textarea.value = existingText + separator + templates[selected];
+    }
+}
+
 
 
 </script>
