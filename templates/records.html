@@ -3,176 +3,437 @@
 <head>
     <meta charset="UTF-8" />
     <title>登録済みレコード一覧</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    />
+    <link
+        href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"
+        rel="stylesheet"
+    />
     <style>
+        body {
+            background-color: #f8f9fa;
+        }
         .container {
             max-width: 100%;
-            padding-left: 2rem;
-            padding-right: 2rem;
+            padding: 2rem 3rem;
+            transition: padding-top 0.3s ease;
         }
+        h2 {
+            font-weight: 700;
+            color: #343a40;
+            margin-bottom: 2rem;
+            border-bottom: 3px solid #0d6efd;
+            padding-bottom: 0.5rem;
+        }
+
+        /* フィルターメニュー */
+        #filter-menu {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            padding: 1.25rem 1.5rem 1.5rem 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 6px rgb(0 0 0 / 0.05);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1050;
+            max-width: 100%;
+            overflow-x: auto;
+            transition: max-height 0.3s ease, padding 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
+            max-height: 230px;
+        }
+        
+
+
+        #filter-menu-toggle {
+            float: right;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #fff;
+            background-color: #3f51b5; /* 検索メニュー開くボタンと合わせる */
+            border: none;
+            border-radius: 4px;
+            padding: 6px 14px;
+            font-weight: 600;
+            line-height: 1.2;
+            user-select: none;
+            transition: background-color 0.3s ease;
+        }
+
+        #filter-menu-toggle:hover {
+            background-color: #303f9f; /* 少し濃い青でホバー */
+        }
+
+        /* メニュー閉じた時のスタイル */
+        #filter-menu.closed {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            overflow: hidden;
+            border: none;
+            box-shadow: none;
+        }
+
+        /* コンテンツ余白調整 */
+        .container.py-5.menu-open {
+            padding-top: 230px;
+        }
+        .container.py-5.menu-closed {
+            padding-top: 2rem;
+        }
+
+        #filter-menu h5 {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #0d6efd;
+            display: inline-block;
+        }
+
+        #filter-menu .row > div {
+            margin-bottom: 1rem;
+        }
+
+        #filter-menu label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        /* 閉じるボタン */
+        #filter-menu-close-btn {
+            float: right;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #0d6efd;
+            border: none;
+            background: transparent;
+            font-weight: 700;
+            padding: 0 0.5rem;
+            line-height: 1;
+            user-select: none;
+            transition: color 0.3s ease;
+        }
+        #filter-menu-close-btn:hover {
+            color: #084298;
+            text-decoration: underline;
+        }
+
+        /* メニューを開くボタン */
+        #filter-menu-open-btn {
+            position: fixed;
+            top: 0.5rem;
+            right: 1rem;
+            z-index: 1060;
+            display: none;
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.4rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+            transition: background-color 0.3s ease;
+        }
+        #filter-menu-open-btn:hover {
+            background-color: #084298;
+        }
+
         table {
-            font-size: 1.2rem;
-            white-space: normal !important;
+            font-size: 0.85rem;
+            white-space: normal;
             word-break: break-word;
             vertical-align: top;
-            overflow: hidden;
+            table-layout: fixed; /* ←これが必要 */
+            width: 100%;
         }
-        th:nth-child(1), td:nth-child(1) { width: 130px; }
-        th:nth-child(2), td:nth-child(2) { width: 110px; }
-        th:nth-child(3), td:nth-child(3) { width: 110px; }
-        th:nth-child(4), td:nth-child(4) { width: 120px; }
-        th:nth-child(5), td:nth-child(5) { width: 160px; }
-        th:nth-child(6), td:nth-child(6) { width: 110px; }
-        th:nth-child(7), td:nth-child(7) { width: 110px; }
-        th:nth-child(8), td:nth-child(8),
-        th:nth-child(9), td:nth-child(9) {
-            width: 300px;
-            max-width: 300px;
+
+        th, td {
             white-space: pre-wrap;
-            word-wrap: break-word;
+            vertical-align: middle !important;
+            padding: 0.5rem;
         }
-        .resize-handle {
-            position: absolute;
-            right: 0;
-            top: 0;
-            width: 4px;
-            height: 100%;
-            cursor: col-resize;
-            background-color: rgba(0, 0, 0, 0.1);
-            z-index: 20;
+
+        thead th {
+            background-color: #e9ecef;
+            font-weight: 600;
+            color: #212529;
+            text-align: center;
         }
-        #controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-            align-items: center;
-        }
-        #length-container select {
-            width: auto;
-        }
-        #search-container input {
-            width: 300px;
-            height: 38px;
-        }
+
+        th:nth-child(1) { width: 70px; }  /* 電話番号 → "名前" がこれなら変更 */
+        th:nth-child(2) { width: 80px; }  /* 商材名 */
+        th:nth-child(3) { width: 70px; }  /* 受注日時 */
+        th:nth-child(4) { width: 90px; }  /* 前確ステータス */
+        th:nth-child(5) { width: 100px; }  /* 次回コール */
+        th:nth-child(6) { width: 70px; }  /* CLOK日 */
+        th:nth-child(7) { width: 70px; }  /* 申込日 */
+
         #pagination-container {
             display: flex;
             justify-content: center;
             margin-top: 1rem;
         }
+
+        .btn-group-custom {
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            #filter-menu .row > div {
+                width: 100%;
+            }
+            #filter-menu-open-btn {
+                left: 0.5rem;
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
+            }
+        }
+
+
+
+        #filter-menu-close-btn {
+            float: right;
+            cursor: pointer;
+            font-size: 1.1rem;
+            color: #0d6efd;
+            border: none;
+            background: transparent;
+            font-weight: 700;
+            padding: 0.2rem 0.6rem;
+            line-height: 1;
+            user-select: none;
+            transition: color 0.3s ease;
+            border-radius: 4px;
+        }
+        #filter-menu-close-btn:hover {
+            color: #084298;
+            background-color: #e7f1ff;
+            text-decoration: none;
+        }
+
+        .dataTables_filter {
+            display: none !important;
+        }
+
+
     </style>
 </head>
-<body class="bg-light">
-    <div class="container py-5">
-        <h2 class="mb-4">あなたに紐づく取引先一覧</h2>
+<body>
+    <button id="filter-menu-open-btn" aria-expanded="false" aria-controls="filter-menu">検索メニューを開く</button>
 
-        <div id="controls" class="mb-3">
-            <div id="length-container" class="d-flex align-items-center"></div>
-            <div id="search-container" class="d-flex align-items-center"></div>
+    <div class="container py-5 menu-open">
+        <h2>あなたに紐づく取引先一覧</h2>
+
+        <div id="filter-menu" role="region" aria-label="検索・絞り込みメニュー">
+            <h5>検索・絞り込みメニュー</h5>
+            <!-- 閉じるボタン -->
+            <button id="filter-menu-close-btn" title="メニューを閉じる" aria-label="検索メニューを閉じる">
+                ✕ 閉じる
+            </button>
+
+
+
+            <div class="row align-items-end">
+                <div class="col-md-3">
+                    <label for="search-box">キーワード検索</label>
+                    <input
+                        type="search"
+                        id="search-box"
+                        class="form-control form-control-sm"
+                        placeholder="検索語を入力..."
+                    />
+                </div>
+                <div class="col-md-3">
+                    <label for="date-target">絞り込み対象日付</label>
+                    <select id="date-target" class="form-select form-select-sm" aria-describedby="date-target-help">
+                        <option value="2" selected>受注日時</option>
+                        <option value="5">CLOK日</option>
+                        <option value="6">申込日</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="min-date">開始日</label>
+                    <input type="date" id="min-date" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-3">
+                    <label for="max-date">終了日</label>
+                    <input type="date" id="max-date" class="form-control form-control-sm" />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="filter-column-2">商材名で絞り込み</label>
+                    <select id="filter-column-2" class="form-select form-select-sm">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="filter-column-4">前確ステータスで絞り込み</label>
+                    <select id="filter-column-4" class="form-select form-select-sm">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+            </div>
         </div>
 
-        <div>
-            <table id="recordsTable" class="table table-bordered table-striped mb-0">
-                <thead>
-                    <tr>
-                        <th scope="col">名前</th>
-                        <th scope="col">商材名</th>
-                        <th scope="col">受注日時</th>
-                        <th scope="col">前確ステータス</th>
-                        <th scope="col">次回コール</th>
-                        <th scope="col">CLOK日</th>
-                        <th scope="col">申込日</th>
-                        <th scope="col">前確備考</th>
-                        <th scope="col">後確備考</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for record in records %}
-                    <tr>
-                        <td>{{ record.Name }}</td>
-                        <td>{{ record.Field106__c or '' }}</td> 
-                        <td>{{ record.timetorihiki__c_formatted }}</td>
-                        <td>{{ record.Field101__c or '' }}</td>
-                        <td>{{ record.Field97__c_formatted }}</td>
-                        <td>{{ record.CLOK__c or '' }}</td>
-                        <td>{{ record.Field118__c or '' }}</td>
-                        <td>{{ (record.Field171__c or '').replace('\n', '<br>') | safe }}</td>
-                        <td>{{ (record.Field172__c or '').replace('\n', '<br>') | safe }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <table id="recordsTable" class="table table-bordered table-striped mb-0" role="grid" aria-describedby="pagination-container">
+            <thead>
+                <tr>
+                    <th>取引先名</th>
+                    <th>商材名</th>
+                    <th>受注日時</th>
+                    <th>前確ステータス</th>
+                    <th>次回コール</th>
+                    <th>CLOK日</th>
+                    <th>申込日</th>
+                    <th>前確備考</th>
+                    <th>後確備考</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td>{{ record.Name }}</td>
+                    <td>{{ record.Field106__c or '' }}</td>
+                    <td>{{ record.timetorihiki__c_formatted }}</td>
+                    <td>{{ record.Field101__c or '' }}</td>
+                    <td>{{ record.Field97__c_formatted }}</td>
+                    <td>{{ record.CLOK__c or '' }}</td>
+                    <td>{{ record.Field118__c or '' }}</td>
+                    <td>{{ (record.Field171__c or '').replace('\n', '<br>') | safe }}</td>
+                    <td>{{ (record.Field172__c or '').replace('\n', '<br>') | safe }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
         <div id="pagination-container"></div>
 
-        <div class="mt-3">
+        <div class="btn-group btn-group-custom">
             <button class="btn btn-primary me-2" onclick="location.reload();">リロード</button>
             <a href="{{ url_for('menu_page') }}" class="btn btn-secondary">メニューに戻る</a>
         </div>
     </div>
 
+    <!-- JSライブラリ -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/plug-ins/1.13.6/i18n/ja.json"></script>
 
     <script>
         $(document).ready(function () {
-            var table = $('#recordsTable').DataTable({
+            const filterMenu = $('#filter-menu');
+            const filterOpenBtn = $('#filter-menu-open-btn');
+            const filterCloseBtn = $('#filter-menu-close-btn');
+            const container = $('.container.py-5');
+
+            // 初期はメニュー開いた状態
+            let isOpen = false;
+
+            function updateLayout() {
+                if (isOpen) {
+                    filterMenu.removeClass('closed');
+                    filterOpenBtn.hide();
+                    container.removeClass('menu-closed').addClass('menu-open');
+                    filterOpenBtn.attr('aria-expanded', 'true');
+                } else {
+                    filterMenu.addClass('closed');
+                    filterOpenBtn.show();
+                    container.removeClass('menu-open').addClass('menu-closed');
+                    filterOpenBtn.attr('aria-expanded', 'false');
+                }
+            }
+
+            filterOpenBtn.on('click', function () {
+                isOpen = true;
+                updateLayout();
+            });
+
+            filterCloseBtn.on('click', function () {
+                isOpen = false;
+                updateLayout();
+            });
+
+            updateLayout();
+
+            // DataTables初期化
+            const table = $('#recordsTable').DataTable({
                 paging: true,
-                lengthChange: true,
+                lengthChange: false,
                 searching: true,
                 ordering: true,
-                info: true,
-                autoWidth: false,
-                pageLength: 10,
-                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
                 order: [[2, 'desc']],
                 language: {
-                    url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/ja.json"
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/ja.json',
                 },
-                dom: 'lfrtip',          // l = length, r = processing, t = table, i = info, p = pagination
-                scrollY: '600px',      // 縦スクロール高さ指定
-                scrollX: true,         // 横スクロール有効化
-                scrollCollapse: true   // データが少ないときスクロールエリアを縮める
+                pageLength: 15,
+                info: true,
+                autoWidth: false,
             });
 
-            // 表示件数セレクトボックスを外部コンテナに移動
-            $('#length-container').append($('#recordsTable_length select').addClass('form-select form-select-sm me-3'));
-            
-            // 検索ボックスのlabelとinputを外部コンテナに移動
-            $('#search-container').append($('#recordsTable_filter label').addClass('d-flex align-items-center').css('margin', '0'));
-            $('#recordsTable_filter').hide();
-
-            // ページネーションを外部コンテナに移動
-            $('#pagination-container').append($('#recordsTable_paginate'));
-
-            // 列リサイズハンドル追加
-            $('#recordsTable thead th').each(function () {
-                $(this).css('position', 'relative');
-                $(this).append('<div class="resize-handle"></div>');
+            // キーワード検索
+            $('#search-box').on('input', function () {
+                table.search(this.value).draw();
             });
 
-            let startX, startWidth, $th;
-
-            $('.resize-handle').on('mousedown', function (e) {
-                e.preventDefault();
-                $th = $(this).parent();
-                startX = e.pageX;
-                startWidth = $th.width();
-
-                $(document).on('mousemove.resize', function (e) {
-                    const newWidth = startWidth + (e.pageX - startX);
-                    if (newWidth > 30) {
-                        $th.css('width', newWidth + 'px');
-                    }
+            // セレクトボックスの選択肢をセット（重複なし）
+            function populateSelect(id, columnIndex) {
+                const select = $(id);
+                const uniqueValues = new Set();
+                table
+                    .column(columnIndex)
+                    .data()
+                    .each(function (d) {
+                        if (d) uniqueValues.add(d.trim());
+                    });
+                const sorted = Array.from(uniqueValues).sort((a, b) =>
+                    a.localeCompare(b, 'ja')
+                );
+                sorted.forEach((val) => {
+                    select.append(
+                        $('<option>').val(val).text(val)
+                    );
                 });
+            }
+            populateSelect('#filter-column-2', 1);
+            populateSelect('#filter-column-4', 3);
 
-                $(document).on('mouseup.resize', function () {
-                    $(document).off('.resize');
-                });
+            // 絞り込み用関数
+            $.fn.dataTable.ext.search.push(function (settings, data) {
+                // 商材名
+                const prodFilter = $('#filter-column-2').val();
+                if (prodFilter && data[1] !== prodFilter) return false;
+
+                // 前確ステータス
+                const statusFilter = $('#filter-column-4').val();
+                if (statusFilter && data[3] !== statusFilter) return false;
+
+                // 日付絞り込み（対象列は選択で変わる）
+                const targetIndex = parseInt($('#date-target').val());
+                const minDate = $('#min-date').val();
+                const maxDate = $('#max-date').val();
+                const cellDateStr = data[targetIndex];
+
+                if (cellDateStr) {
+                    const cellDate = new Date(cellDateStr);
+                    if (minDate && cellDate < new Date(minDate)) return false;
+                    if (maxDate && cellDate > new Date(maxDate)) return false;
+                } else {
+                    if (minDate || maxDate) return false; // 日付ないのに絞り込み指定されてる場合は除外
+                }
+
+                return true;
+            });
+
+            // フィルターのイベント
+            $('#filter-column-2, #filter-column-4, #date-target, #min-date, #max-date').on('change', function () {
+                table.draw();
             });
         });
     </script>
