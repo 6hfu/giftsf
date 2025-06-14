@@ -190,9 +190,9 @@
                 {% if field.type == 'textarea' %}
                     <div class="mb-3">
                         <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
-    
-                        {% if not template_inserted %}
-                            <!-- ▼ テンプレート選択と反映ボタン（最初のtextareaのみ表示） -->
+        
+                        {% if api_name == 'Field8__c' %}
+                            <!-- Field8__c のみテンプレート選択＆反映ボタン -->
                             <div class="input-group mb-2">
                                 <select class="form-select" id="template-select-{{ api_name }}">
                                     <option value="">テンプレートを選択</option>
@@ -202,10 +202,9 @@
                                 </select>
                                 <button type="button" class="btn btn-secondary" onclick="insertTemplate('{{ api_name }}')">反映</button>
                             </div>
-                            {% set template_inserted = true %}
                         {% endif %}
-    
-                        <!-- ▼ テキストエリア -->
+        
+                        <!-- テキストエリア -->
                         <textarea class="form-control" id="{{ api_name }}" name="{{ api_name }}"></textarea>
                     </div>
                 {% elif field.type == 'date' %}
@@ -386,33 +385,36 @@
 
     
 function insertTemplate(apiName) {
-    const textarea = document.getElementById(apiName);
     const select = document.getElementById(`template-select-${apiName}`);
-    const selected = select.value;
+    const textarea = document.getElementById(apiName);
+    if (!select || !textarea) return;
 
-    // テンプレート内容
-    const templates = {
-        sonet_new: `・現状料金：
+    const val = select.value;
+    let templateText = '';
+
+    switch(val) {
+        case 'sonet_new':
+            templateText = '・現状料金：
 ・案内料金：
 ・アウト内容：
-・好感触ポイント：`,
-
-        sonet_change: `・現状料金：
+・好感触ポイント：';
+            break;
+        case 'sonet_change':
+            templateText = '・現状料金：
 ・案内料金：
 ・アウト内容：
-・好感触ポイント：`,
-
-        au_hikari: `・現状料金：
+・好感触ポイント：';
+            break;
+        case 'au_hikari':
+            templateText = '・現状料金：
 ・案内料金：
 ・アウト内容：
-・好感触ポイント：`
-    };
-
-    if (selected && templates[selected]) {
-        const existingText = textarea.value.trim();
-        const separator = existingText ? "\n\n" : "";
-        textarea.value = existingText + separator + templates[selected];
+・好感触ポイント：';
+            break;
+        default:
+            templateText = '';
     }
+    textarea.value = templateText;
 }
 
 
