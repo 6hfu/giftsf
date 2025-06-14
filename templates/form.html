@@ -133,8 +133,6 @@
             'KDDI__c', 'KDDI1__c', 'NTT__c', 'NTT1__c', 'Field184__c'
         ] %}
         
-        {% set template_inserted = false %} {# 最初のtextareaが処理されたかどうか #}
-    
         {% for api_name in order %}
             {% set field = fields.get(api_name) %}
             {% if api_name == 'ShippingPostalCode' %}
@@ -190,21 +188,6 @@
                 {% if field.type == 'textarea' %}
                     <div class="mb-3">
                         <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
-        
-                        {% if api_name == 'Field8__c' %}
-                            <!-- Field8__c のみテンプレート選択＆反映ボタン -->
-                            <div class="input-group mb-2">
-                                <select class="form-select" id="template-select-{{ api_name }}">
-                                    <option value="">テンプレートを選択</option>
-                                    <option value="sonet_new">ソネット新設</option>
-                                    <option value="sonet_change">ソネット事業変</option>
-                                    <option value="au_hikari">AU光</option>
-                                </select>
-                                <button type="button" class="btn btn-secondary" onclick="insertTemplate('{{ api_name }}')">反映</button>
-                            </div>
-                        {% endif %}
-        
-                        <!-- テキストエリア -->
                         <textarea class="form-control" id="{{ api_name }}" name="{{ api_name }}"></textarea>
                     </div>
                 {% elif field.type == 'date' %}
@@ -236,7 +219,7 @@
                 {% endif %}
             {% endif %}
         {% endfor %}
-    
+
         <div class="text-center">
             <button type="submit" class="btn btn-primary">作成</button>
         </div>
@@ -380,43 +363,6 @@
             $btn.prop('disabled', false).text('送信');
         }, 10000);
     });
-
-
-
-    
-function insertTemplate(apiName) {
-    const select = document.getElementById(`template-select-${apiName}`);
-    const textarea = document.getElementById(apiName);
-    if (!select || !textarea) return;
-
-    const val = select.value;
-    let templateText = '';
-
-    switch(val) {
-        case 'sonet_new':
-            templateText = '・現状料金：
-・案内料金：
-・アウト内容：
-・好感触ポイント：';
-            break;
-        case 'sonet_change':
-            templateText = '・現状料金：
-・案内料金：
-・アウト内容：
-・好感触ポイント：';
-            break;
-        case 'au_hikari':
-            templateText = '・現状料金：
-・案内料金：
-・アウト内容：
-・好感触ポイント：';
-            break;
-        default:
-            templateText = '';
-    }
-    textarea.value = templateText;
-}
-
 
 
 </script>
