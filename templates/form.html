@@ -69,6 +69,10 @@
             resize: vertical;
         }
 
+        .large-textarea {
+        min-height: 300px; /* 好きな高さに調整可能 */
+        }
+
         button.btn-primary {
             padding: 0.75rem 2rem;
             font-size: 1.1rem;
@@ -130,8 +134,31 @@
             'Field40__c', 'Field6__c', 'ShippingPostalCode', 'Field39__c',
             'Field35__c', 'Field36__c', 'Field37__c', 'Field38__c',
             'Field9__c', 'Field12__c', 'Field14__c',
-            'KDDI__c', 'KDDI1__c', 'NTT__c', 'NTT1__c', 'Field184__c'
+            'KDDI__c', 'KDDI1__c', 'NTT__c', 'NTT1__c', 'Field184__c', 'Field229__c'
         ] %}
+
+        {% set templates = {
+            "ソネット事業変": "・現状料金：\n・案内料金：\n・アウト内容：\n・好感触ポイント：",
+
+            "ソネット新設": "・現状料金：\n・案内料金：\n・アウト内容：\n・好感触ポイント：",
+
+            "AU光": "・現状料金：\n・案内料金：\n・アウト内容：\n・好感触ポイント：",
+
+            "ナリーズ用": "・性別：\n・年齢層：　代\n・固定電話(SONET)：無・有り（変更OK）\n・案内速度：１G・５G・１０G\n・お客様からの質問＆どう返したか：\n・その他："
+
+        } %}
+
+        {% set required_fields = [
+            'Name',
+            'Field76__c',
+            'Field78__c',
+            'Field56__c',
+            'Field22__c',
+            'Field23__c',
+            'Field24__c',
+            'Field25__c'
+        ] %}
+
         
         {% for api_name in order %}
             {% set field = fields.get(api_name) %}
@@ -158,7 +185,14 @@
                 </div>
             {% elif api_name == 'Field25__c' %}
                 <div class="mb-3">
-                    <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                    <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
+                        {{ field.label }}
+                        {% if api_name in required_fields %}
+                            <span class="required">※必須</span>
+
+                        {% endif %}
+                    </label>
+
                     <div class="d-flex gap-2">
                         <select class="form-select" id="{{ api_name }}_hour" name="{{ api_name }}_hour" style="max-width: 100px;">
                             {% for h in range(0, 24) %}
@@ -176,7 +210,14 @@
                 </div>
             {% elif api_name == 'Field76__c' %}
                 <div class="mb-3">
-                    <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                    <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
+                        {{ field.label }}
+                        {% if api_name in required_fields %}
+                            <span class="required">※必須</span>
+
+                        {% endif %}
+                    </label>
+
                     <select class="form-select select2" id="{{ api_name }}" name="{{ api_name }}">
                         <option value="">選択してください</option>
                         {% for key in field76_map.keys() %}
@@ -186,24 +227,72 @@
                 </div>
             {% elif field %}
                 {% if field.type == 'textarea' %}
-                    <div class="mb-3">
-                        <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
-                        <textarea class="form-control" id="{{ api_name }}" name="{{ api_name }}"></textarea>
+                <div class="mb-3">
+                    <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
+                        {{ field.label }}
+                        {% if api_name in required_fields %}
+                            <span class="required">※必須</span>
+
+                        {% endif %}
+                    </label>
+
+
+                    {% if api_name == 'Field8__c' %}
+                    <div class="d-flex mb-2">
+                        <select class="template-selector form-select me-2" style="max-width: 250px;">
+                            <option value="">テンプレートを選択</option>
+                            {% for label, value in templates.items() %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn btn-outline-primary apply-template">反映</button>
                     </div>
+                    {% endif %}
+
+                    {% if api_name == 'Field8__c' %}
+                    <textarea class="form-control" id="{{ api_name }}" name="{{ api_name }}" style="min-height: 400px;"></textarea>
+                    {% else %}
+                    <textarea class="form-control" id="{{ api_name }}" name="{{ api_name }}"></textarea>
+                    {% endif %}
+
+                </div>
+
+            
                 {% elif field.type == 'date' %}
                     <div class="mb-3">
-                        <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                        <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
+                            {{ field.label }}
+                            {% if api_name in required_fields %}
+                                <span class="required">※必須</span>
+
+                            {% endif %}
+                        </label>
+
                         <input type="date" class="form-control" id="{{ api_name }}" name="{{ api_name }}"
                             {% if api_name == 'Field24__c' %}value="{{ today }}"{% endif %} />
                     </div>
                 {% elif field.type == 'datetime' %}
                     <div class="mb-3">
-                        <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                        <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
+                            {{ field.label }}
+                            {% if api_name in required_fields %}
+                                <span class="required">※必須</span>
+
+                            {% endif %}
+                        </label>
+
                         <input type="datetime-local" class="form-control" id="{{ api_name }}" name="{{ api_name }}" />
                     </div>
                 {% elif field.picklistValues %}
                     <div class="mb-3">
-                        <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                        <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
+                            {{ field.label }}
+                            {% if api_name in required_fields %}
+                                <span class="required">※必須</span>
+
+                            {% endif %}
+                        </label>
+
                         <select class="form-select" id="{{ api_name }}" name="{{ api_name }}">
                             <option value="">選択してください</option>
                             {% for val in field.picklistValues %}
@@ -213,7 +302,14 @@
                     </div>
                 {% else %}
                     <div class="mb-3">
-                        <label for="{{ api_name }}" class="form-label">{{ field.label }}</label>
+                        <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
+                            {{ field.label }}
+                            {% if api_name in required_fields %}
+                                <span class="required">※必須</span>
+
+                            {% endif %}
+                        </label>
+
                         <input type="text" class="form-control" id="{{ api_name }}" name="{{ api_name }}" />
                     </div>
                 {% endif %}
@@ -275,7 +371,7 @@
             });
         });
 
-        // フォーム送信時の必須項目チェック
+        // 必須項目のAPI名リスト（PythonのrequiredFieldsと合わせてください）
         const requiredFields = [
             'Name',
             'Field76__c',
@@ -286,6 +382,20 @@
             'Field24__c',
             'Field25__c'
         ];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            requiredFields.forEach(apiName => {
+            // data-api-name属性を持つlabelを探す
+            const label = document.querySelector(`label[data-api-name="${apiName}"]`);
+            if (label) {
+                // 小さい赤文字の「※必須」を追加
+                const span = document.createElement('small');
+                span.className = 'text-danger ms-1';
+                span.textContent = '※必須';
+                label.appendChild(span);
+            }
+            });
+        });
 
         $('form').on('submit', function (e) {
             let isValid = true;
@@ -365,6 +475,21 @@
     });
 
 
+    $(document).ready(function () {
+    $('.apply-template').click(function () {
+        const container = $(this).closest('.mb-3');
+        const templateText = container.find('.template-selector').val();
+        const textarea = container.find('textarea');
+
+        if (templateText) {
+        const current = textarea.val();
+        textarea.val(current + (current ? '\n' : '') + templateText);
+        }
+    });
+    });
+
+
+
 </script>
 
 
@@ -386,10 +511,16 @@
         font-size: 0.95rem;
     }
 
+    .required {
+    font-size: 0.8em; /* 通常の80%の大きさに */
+    color: red; /* 必須の色は赤のまま */
+    }
+
     
 </style>
 
-            
+
+   
 
 
 
