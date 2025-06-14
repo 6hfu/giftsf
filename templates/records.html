@@ -220,6 +220,28 @@
         }
 
 
+        .clear-button {
+        padding: 0.6rem 1.2rem;
+        font-size: 1rem;
+        border-radius: 0.5rem;
+        background-color: rgba(255, 255, 255, 0.3);
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        color: #333;
+        backdrop-filter: blur(6px);
+        transition: background-color 0.3s ease, color 0.3s ease, transform 0.1s ease;
+        }
+
+        .clear-button:hover {
+        background-color: rgba(255, 255, 255, 0.5);
+        color: #000;
+        transform: scale(1.03);
+        }
+
+        .clear-button:active {
+        transform: scale(0.98);
+        }
+
+
     </style>
 </head>
 <body>
@@ -263,6 +285,7 @@
                     <label for="max-date">終了日</label>
                     <input type="date" id="max-date" class="form-control form-control-sm" />
                 </div>
+
             </div>
 
             <div class="row">
@@ -277,6 +300,10 @@
                     <select id="filter-column-4" class="form-select form-select-sm">
                         <option value="">すべて</option>
                     </select>
+                </div>
+
+                <div class="col-md-4">
+                    <button id="filter-clear-btn" class="btn btn-outline-secondary btn-sm">クリア</button>
                 </div>
             </div>
         </div>
@@ -435,6 +462,20 @@
             $('#filter-column-2, #filter-column-4, #date-target, #min-date, #max-date').on('change', function () {
                 table.draw();
             });
+        });
+
+        document.getElementById('filter-clear-btn').addEventListener('click', function () {
+            // 入力をすべて初期化
+            document.getElementById('search-box').value = '';
+            document.getElementById('date-target').value = '2'; // 初期選択: 受注日時
+            document.getElementById('min-date').value = '';
+            document.getElementById('max-date').value = '';
+            document.getElementById('filter-column-2').value = '';
+            document.getElementById('filter-column-4').value = '';
+
+            // DataTableの検索を初期化（DataTableが初期化済み前提）
+            const table = $('#recordsTable').DataTable();
+            table.search('').columns().search('').draw();
         });
     </script>
 </body>
