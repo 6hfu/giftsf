@@ -103,7 +103,7 @@ def get_field_descriptions():
         'X2__c', 'Field27__c', 'Field28__c', 'Field30__c', 'Field31__c',
         'Field41__c', 'Field39__c', 'Field35__c', 'Field36__c', 'Field37__c',
         'Field38__c', 'Field12__c', 'Field14__c', 'KDDI__c', 'KDDI1__c',
-        'NTT__c', 'NTT1__c', 'Field184__c'
+        'NTT__c', 'NTT1__c', 'Field184__c', 'Field229__c'
     ]
     field_defs = {}
     for f in desc['fields']:
@@ -172,7 +172,7 @@ def submit():
         'X2__c', 'Field27__c', 'Field28__c', 'Field30__c', 'Field31__c',
         'Field41__c', 'Field39__c', 'Field35__c', 'Field36__c', 'Field37__c',
         'Field38__c', 'Field12__c', 'Field14__c', 'KDDI__c', 'KDDI1__c',
-        'NTT__c', 'NTT1__c', 'Field184__c'
+        'NTT__c', 'NTT1__c', 'Field184__c', 'Field229__c'
     ]
     form_data = {field: request.form.get(field) for field in import_fields}
     form_data['Field207__c'] = session.get('username', None)
