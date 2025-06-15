@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ダッシュボード</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+  <style>
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 20px;
+    background-color: #f4f6f9;
+  }
+
+.top-bar {
+  position: sticky;
+  top: 0;
+  background-color: #fff; /* 背景色を指定して、下のコンテンツが透けないように */
+  z-index: 9999; /* 他の要素より前面に表示 */
+  padding-top: 10px;  /* 元のpadding-bottomは維持 */
+  padding-bottom: 10px;
+  border-bottom: 2px solid #dee2e6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: nowrap;
+  margin-bottom: 1.5rem; /* 固定ヘッダーの下にスペース */
+}
+
+.top-bar h2 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #000000; /* ブルーの強調色 */
+  text-shadow: 1px 1px 3px rgba(13, 110, 253, 0.3);
+  letter-spacing: 1.5px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.top-bar h2 .icon {
+  font-size: 2.6rem; /* アイコンを大きめに */
+  transform: rotate(-10deg);
+  transition: transform 0.3s ease;
+}
+
+.top-bar h2:hover .icon {
+  transform: rotate(0deg);
+  color: #0a58ca;
+}
+
+
+  .section-title {
+    font-size: 1.2rem;
+    color: #495057;
+    border-left: 5px solid #0d6efd;
+    padding-left: 10px;
+  }
+
+  /* 共通カード */
+  .card {
+    border-radius: 8px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 本日の実績セクション */
+  #todayKpiContainer {
+    border-left: 6px solid #198754;
+    background-color: #f0fbf4;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+  }
+
+  #todayKpiContainer .card {
+    background-color: #e6f5ec;
+    border-left: 4px solid #198754;
+  }
+
+  #todayKpiContainer .card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #198754;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #todayKpiContainer .card-value {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #146c43;
+  }
+
+  /* 期間別実績セクション */
+  #kpiContainer {
+    border-left: 6px solid #0d6efd;
+    background-color: #e9f2fe;
+    padding: 20px;
+    border-radius: 10px;
+  }
+
+  #kpiContainer .card {
+    background-color: #dcecff;
+    border-left: 4px solid #0d6efd;
+  }
+
+  #kpiContainer .card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0d6efd;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #kpiContainer .card-value {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #0a58ca;
+  }
+
+  /* セレクトボックス・ラベル */
+  label {
+    font-weight: 600;
+    margin-right: 6px;
+    font-size: 0.95rem;
+  }
+
+  select.form-select {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    min-width: 120px;
+  }
+
+  @media (max-width: 576px) {
+    .top-bar {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .top-bar h2 {
+      max-width: 100%;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+  }
+
+    .compare-values {
+    margin-top: 10px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+  .compare-values .label {
+    font-weight: 600;
+    color: #555;
+    display: inline-block;
+    width: 50px;
+  }
+  .diff-value {
+    font-weight: 700;
+  }
+  .diff-value.positive {
+    color: #198754; /* 緑：増加 */
+  }
+  .diff-value.negative {
+    color: #dc3545; /* 赤：減少 */
+  }
+  .diff-value.neutral {
+    color: #6c757d; /* グレー：変化なし */
+  }
+
+
+  </style>
+</head>
+<body>
+    <div class="top-bar">
+    <h2 class="mb-0">
+        <span class="icon">📊</span> 個人獲得実績
+    </h2>
+    <nav>
+        <a href="form" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-pencil-square"></i> 受注登録</a>
+        <a href="records" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-list-ul"></i> レコード一覧</a>
+        <a href="menu_page" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> メニューに戻る</a>
+    </nav>
+    </div>
+
+
+
+    <div>
+        <div id="todayKpiContainer" class="mb-4">
+        <div class="section-title fw-bold mb-3">📅 本日の実績</div>
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-box-seam"></i> 受注数</div>
+            <div class="card-value" id="today_orders">-</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-check-square"></i> CLOK数</div>
+            <div class="card-value" id="today_clok">-</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-pencil-square"></i> エントリ数</div>
+            <div class="card-value" id="today_entry">-</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-clock-history"></i> 後確待ち</div>
+            <div class="card-value" id="today_wait">-</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-percent"></i> CLOK率</div>
+            <div class="card-value" id="today_clokRate">-</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-graph-up"></i> ETOK率</div>
+            <div class="card-value" id="today_etokRate">-</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-bar-chart"></i> 待ち込みETOK率</div>
+            <div class="card-value" id="today_etokWaitRate">-</div>
+          </div>
+        </div>
+
+        <div class="col">
+        <div class="card p-3">
+            <div class="card-title"><i class="bi bi-people-fill"></i> 営業戻し キャッチ</div>
+            <div class="card-value" id="today_catch">-</div>
+        </div>
+        </div>
+        <div class="col">
+        <div class="card p-3">
+            <div class="card-title"><i class="bi bi-pie-chart-fill"></i> 戻し・キャッチ率</div>
+            <div class="card-value" id="today_catchRate">-</div>
+        </div>
+</div>
+
+
+      </div>
+
+
+
+    </div>
+
+
+    <div>
+        <div id="kpiContainer">
+        <div class="d-flex align-items-center flex-wrap mb-3">
+        <div class="section-title fw-bold me-3 mb-2">📈 期間別実績：</div>
+
+        <div class="d-flex align-items-center mb-2">
+            <label for="periodSelect" class="me-2 fw-bold">表示期間:</label>
+            <select id="periodSelect" class="form-select w-auto" onchange="updateDashboard()">
+            <option value="current">当月</option>
+            <option value="previous">前月</option>
+            </select>
+        </div>
+        </div>
+
+
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-box-seam"></i> 受注数</div>
+            <div class="card-value" id="orders">-</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-check-square"></i> CLOK数</div>
+            <div class="card-value" id="clok">-</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-pencil-square"></i> エントリ数</div>
+            <div class="card-value" id="entry">-</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-clock-history"></i> 後確待ち</div>
+            <div class="card-value" id="wait">-</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-percent"></i> CLOK率</div>
+            <div class="card-value" id="clokRate">-</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-graph-up"></i> ETOK率</div>
+            <div class="card-value" id="etokRate">-</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card p-3">
+            <div class="card-title"><i class="bi bi-bar-chart"></i> 待ち込みETOK率</div>
+            <div class="card-value" id="etokWaitRate">-</div>
+          </div>
+        </div>
+
+        <div class="col">
+        <div class="card p-3">
+            <div class="card-title"><i class="bi bi-people-fill"></i> 営業戻し キャッチ</div>
+            <div class="card-value" id="catch">-</div>
+        </div>
+        </div>
+        <div class="col">
+        <div class="card p-3">
+            <div class="card-title"><i class="bi bi-pie-chart-fill"></i> 戻し・キャッチ率</div>
+            <div class="card-value" id="catchRate">-</div>
+        </div>
+        </div>
+
+
+      </div>
+      
+    </div>
+  </div>
+
+
+
+<div id="compareContainer" class="mt-5">
+  <div class="section-title fw-bold mb-3">📊 前月 vs 当月 比較</div>
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+
+    <div class="col">
+      <div class="card p-3">
+        <div class="card-title"><i class="bi bi-percent"></i> CLOK率</div>
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small text-muted">前月</div>
+          <div id="prev_clokRate" class="fw-bold">-</div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small text-muted">当月</div>
+          <div id="curr_clokRate" class="fw-bold">-</div>
+        </div>
+        <hr class="my-2" />
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small fw-semibold">差分</div>
+          <div id="compare_clokRate" class="fw-bold text-primary">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card p-3">
+        <div class="card-title"><i class="bi bi-graph-up"></i> ETOK率</div>
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small text-muted">前月</div>
+          <div id="prev_etokRate" class="fw-bold">-</div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small text-muted">当月</div>
+          <div id="curr_etokRate" class="fw-bold">-</div>
+        </div>
+        <hr class="my-2" />
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small fw-semibold">差分</div>
+          <div id="compare_etokRate" class="fw-bold text-primary">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card p-3">
+        <div class="card-title"><i class="bi bi-bar-chart"></i> 待ち込みETOK率</div>
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small text-muted">前月</div>
+          <div id="prev_etokWaitRate" class="fw-bold">-</div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small text-muted">当月</div>
+          <div id="curr_etokWaitRate" class="fw-bold">-</div>
+        </div>
+        <hr class="my-2" />
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small fw-semibold">差分</div>
+          <div id="compare_etokWaitRate" class="fw-bold text-primary">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card p-3">
+        <div class="card-title"><i class="bi bi-people-fill"></i> 営業戻し キャッチ</div>
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small text-muted">前月</div>
+          <div id="prev_catchRate" class="fw-bold">-</div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small text-muted">当月</div>
+          <div id="curr_catchRate" class="fw-bold">-</div>
+        </div>
+        <hr class="my-2" />
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small fw-semibold">差分</div>
+          <div id="compare_catchRate" class="fw-bold text-primary">-</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+
+<!-- ダッシュボードJS -->
+<script>
+    const dashboardData = JSON.parse('{{ dashboard_data | safe }}');
+
+    function calculateRates(data) {
+    const clokRate = data.orders > 0 ? (data.clok / data.orders * 100).toFixed(1) + "%" : "-";
+    const etokRate = data.clok > 0 ? (data.entry / data.clok * 100).toFixed(1) + "%" : "-";
+    const etokWaitRate = data.clok > 0 ? ((data.wait + data.entry) / data.clok * 100).toFixed(1) + "%" : "-";
+    const catchRate = data.orders > 0 ? (data.catch / data.orders * 100).toFixed(1) + "%" : "-";
+    return { clokRate, etokRate, etokWaitRate, catchRate };
+    }
+
+    function updateDashboard() {
+    const period = document.getElementById("periodSelect").value;
+    const data = dashboardData[period] || { orders: 0, clok: 0, entry: 0, wait: 0, catch: 0 };
+    const rates = calculateRates(data);
+
+    document.getElementById("orders").textContent = data.orders;
+    document.getElementById("clok").textContent = data.clok;
+    document.getElementById("entry").textContent = data.entry;
+    document.getElementById("wait").textContent = data.wait;
+    document.getElementById("clokRate").textContent = rates.clokRate;
+    document.getElementById("etokRate").textContent = rates.etokRate;
+    document.getElementById("etokWaitRate").textContent = rates.etokWaitRate;
+    document.getElementById("catch").textContent = data.catch;
+    document.getElementById("catchRate").textContent = rates.catchRate;
+    }
+
+    function updateTodayDashboard() {
+    const data = dashboardData["today"] || { orders: 0, clok: 0, entry: 0, wait: 0, catch: 0  };
+    const rates = calculateRates(data);
+
+    document.getElementById("today_orders").textContent = data.orders;
+    document.getElementById("today_clok").textContent = data.clok;
+    document.getElementById("today_entry").textContent = data.entry;
+    document.getElementById("today_wait").textContent = data.wait;
+    document.getElementById("today_clokRate").textContent = rates.clokRate;
+    document.getElementById("today_etokRate").textContent = rates.etokRate;
+    document.getElementById("today_etokWaitRate").textContent = rates.etokWaitRate;
+    document.getElementById("today_catch").textContent = data.catch;
+    document.getElementById("today_catchRate").textContent = rates.catchRate;
+    }
+
+    function parsePercent(str) {
+      return str.endsWith('%') ? parseFloat(str.slice(0, -1)) : NaN;
+    }
+
+    function formatDifference(value, isPercent = false) {
+      if (value === null || isNaN(value)) return "-";
+      const sign = value > 0 ? "+" : "";
+      return sign + (isPercent ? value.toFixed(1) + "%" : value);
+    }
+
+    function setValueWithColor(id, val, isPercent = false) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = formatDifference(val, isPercent);
+      el.style.color = val > 0 ? "#198754" : val < 0 ? "#dc3545" : "#6c757d"; // 緑, 赤, グレー
+    }
+
+function updateCompareDashboard() {
+  const current = dashboardData["current"] || { orders: 0, clok: 0, entry: 0, wait: 0, catch: 0 };
+  const previous = dashboardData["previous"] || { orders: 0, clok: 0, entry: 0, wait: 0, catch: 0 };
+
+  const currentRates = calculateRates(current);
+  const previousRates = calculateRates(previous);
+
+  // 差分計算
+  const diffClokRate = parsePercent(currentRates.clokRate) - parsePercent(previousRates.clokRate);
+  const diffEtokRate = parsePercent(currentRates.etokRate) - parsePercent(previousRates.etokRate);
+  const diffEtokWaitRate = parsePercent(currentRates.etokWaitRate) - parsePercent(previousRates.etokWaitRate);
+  const diffCatch = current.catch - previous.catch;
+  const diffCatchRate = parsePercent(currentRates.catchRate) - parsePercent(previousRates.catchRate);
+
+  // 前月・当月の値表示（％付きの文字列）
+  document.getElementById("prev_clokRate").textContent = previousRates.clokRate;
+  document.getElementById("curr_clokRate").textContent = currentRates.clokRate;
+
+  document.getElementById("prev_etokRate").textContent = previousRates.etokRate;
+  document.getElementById("curr_etokRate").textContent = currentRates.etokRate;
+
+  document.getElementById("prev_etokWaitRate").textContent = previousRates.etokWaitRate;
+  document.getElementById("curr_etokWaitRate").textContent = currentRates.etokWaitRate;
+
+  document.getElementById("prev_catchRate").textContent = previousRates.catchRate;
+  document.getElementById("curr_catchRate").textContent = currentRates.catchRate;
+
+  // 差分表示
+  setValueWithColor("compare_clokRate", diffClokRate, true);
+  setValueWithColor("compare_etokRate", diffEtokRate, true);
+  setValueWithColor("compare_etokWaitRate", diffEtokWaitRate, true);
+
+  // 営業戻しキャッチは個数と率の差分表示（HTMLには個数差分用はありませんので差分率だけ表示）
+  // 差分の個数表示を追加したい場合はHTMLに <div id="compare_catch"> を用意してください
+  setValueWithColor("compare_catchRate", diffCatchRate, true);
+}
+
+
+    // ✅ 初期表示更新
+    window.addEventListener("DOMContentLoaded", () => {
+      updateTodayDashboard();
+      updateDashboard();
+      updateCompareDashboard();
+      updateLastYearCompareDashboard(); // ←追加
+    });
+
+</script>
+
+</body>
+</html>
