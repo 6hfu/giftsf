@@ -8,6 +8,9 @@ import os
 from flask_wtf import CSRFProtect
 import pytz
 import re
+from flask import jsonify, render_template
+import json
+
 
 # 環境変数読み込み
 load_dotenv()
@@ -320,6 +323,75 @@ def menu_page():
     except Exception as e:
         flash(f"Salesforceの取得中にエラーが発生しました: {str(e)}")
         return redirect(url_for('logout'))
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    try:
+        login_id = session.get('username')
+        if not login_id:
+            flash("ログインIDがセッションにありません")
+            return redirect(url_for('login'))
+
+        # 現在時刻（JST）
+        now = datetime.now(JST)
+        start_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        start_current = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start_prev = (start_current - timedelta(days=1)).replace(day=1)
+        end_prev = start_current - timedelta(seconds=1)
+
+        # Salesforceクエリ
+        soql = f"""
+            SELECT CreatedDate, CLOK__c, Field118__c, Field101__c
+            FROM Account
+            WHERE CreatedDate >= {start_prev.strftime('%Y-%m-%dT00:00:00Z')}
+            AND Field207__c = '{login_id}'
+        """
+        res = sf.query_all(soql)
+        records = res['records']
+
+        # 指標定義
+        stats = {
+            'today': {'orders': 0, 'clok': 0, 'entry': 0, 'wait': 0, 'catch': 0},
+            'current': {'orders': 0, 'clok': 0, 'entry': 0, 'wait': 0, 'catch': 0},
+            'previous': {'orders': 0, 'clok': 0, 'entry': 0, 'wait': 0, 'catch': 0}
+        }
+
+
+        for rec in records:
+            created = datetime.fromisoformat(rec['CreatedDate'].replace('Z', '+00:00')).astimezone(JST)
+
+            # 集計対象期間を判定
+            if created >= start_today:
+                period = 'today'
+            elif created >= start_current:
+                period = 'current'
+            elif created >= start_prev and created <= end_prev:
+                period = 'previous'
+            else:
+                continue  # 集計対象外
+
+            stats[period]['orders'] += 1
+            if rec.get('CLOK__c'):
+                stats[period]['clok'] += 1
+            if rec.get('Field118__c'):
+                stats[period]['entry'] += 1
+            if rec.get('Field101__c'):
+                val = rec['Field101__c']
+                # 「後確待ち」か「後確再コール」が含まれる場合
+                if '後確待ち' in val or '後確再コール' in val:
+                    stats[period]['wait'] += 1
+                # 「営業戻し キャッチ」が含まれる場合
+                if '営業戻し　キャッチ' in val:
+                    stats[period]['catch'] += 1
+
+        return render_template('dashboard.html', dashboard_data=json.dumps(stats, ensure_ascii=False))
+
+    except Exception as e:
+        flash(f"ダッシュボードデータ取得失敗: {str(e)}")
+        return redirect(url_for('menu_page'))
+
+
 
 
 
