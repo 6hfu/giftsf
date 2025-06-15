@@ -280,7 +280,7 @@ def records():
             FROM Account
             WHERE Field207__c = '{login_id}'
             ORDER BY CreatedDate DESC
-            LIMIT 100
+            LIMIT 500
         """
 
         result = sf.query(soql)
