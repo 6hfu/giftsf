@@ -492,42 +492,42 @@
       el.style.color = val > 0 ? "#198754" : val < 0 ? "#dc3545" : "#6c757d"; // 緑, 赤, グレー
     }
 
-function updateCompareDashboard() {
-  const current = dashboardData["current"] || { orders: 0, clok: 0, entry: 0, wait: 0, catch: 0 };
-  const previous = dashboardData["previous"] || { orders: 0, clok: 0, entry: 0, wait: 0, catch: 0 };
+    function updateCompareDashboard() {
+    const current = dashboardData["current"] || { orders: 0, clok: 0, entry: 0, wait: 0, catch: 0 };
+    const previous = dashboardData["previous"] || { orders: 0, clok: 0, entry: 0, wait: 0, catch: 0 };
 
-  const currentRates = calculateRates(current);
-  const previousRates = calculateRates(previous);
+    const currentRates = calculateRates(current);
+    const previousRates = calculateRates(previous);
 
-  // 差分計算
-  const diffClokRate = parsePercent(currentRates.clokRate) - parsePercent(previousRates.clokRate);
-  const diffEtokRate = parsePercent(currentRates.etokRate) - parsePercent(previousRates.etokRate);
-  const diffEtokWaitRate = parsePercent(currentRates.etokWaitRate) - parsePercent(previousRates.etokWaitRate);
-  const diffCatch = current.catch - previous.catch;
-  const diffCatchRate = parsePercent(currentRates.catchRate) - parsePercent(previousRates.catchRate);
+    // 差分計算
+    const diffClokRate = parsePercent(currentRates.clokRate) - parsePercent(previousRates.clokRate);
+    const diffEtokRate = parsePercent(currentRates.etokRate) - parsePercent(previousRates.etokRate);
+    const diffEtokWaitRate = parsePercent(currentRates.etokWaitRate) - parsePercent(previousRates.etokWaitRate);
+    const diffCatch = current.catch - previous.catch;
+    const diffCatchRate = parsePercent(currentRates.catchRate) - parsePercent(previousRates.catchRate);
 
-  // 前月・当月の値表示（％付きの文字列）
-  document.getElementById("prev_clokRate").textContent = previousRates.clokRate;
-  document.getElementById("curr_clokRate").textContent = currentRates.clokRate;
+    // 前月・当月の値表示（％付きの文字列）
+    document.getElementById("prev_clokRate").textContent = previousRates.clokRate;
+    document.getElementById("curr_clokRate").textContent = currentRates.clokRate;
 
-  document.getElementById("prev_etokRate").textContent = previousRates.etokRate;
-  document.getElementById("curr_etokRate").textContent = currentRates.etokRate;
+    document.getElementById("prev_etokRate").textContent = previousRates.etokRate;
+    document.getElementById("curr_etokRate").textContent = currentRates.etokRate;
 
-  document.getElementById("prev_etokWaitRate").textContent = previousRates.etokWaitRate;
-  document.getElementById("curr_etokWaitRate").textContent = currentRates.etokWaitRate;
+    document.getElementById("prev_etokWaitRate").textContent = previousRates.etokWaitRate;
+    document.getElementById("curr_etokWaitRate").textContent = currentRates.etokWaitRate;
 
-  document.getElementById("prev_catchRate").textContent = previousRates.catchRate;
-  document.getElementById("curr_catchRate").textContent = currentRates.catchRate;
+    document.getElementById("prev_catchRate").textContent = previousRates.catchRate;
+    document.getElementById("curr_catchRate").textContent = currentRates.catchRate;
 
-  // 差分表示
-  setValueWithColor("compare_clokRate", diffClokRate, true);
-  setValueWithColor("compare_etokRate", diffEtokRate, true);
-  setValueWithColor("compare_etokWaitRate", diffEtokWaitRate, true);
+    // 差分表示
+    setValueWithColor("compare_clokRate", diffClokRate, true);
+    setValueWithColor("compare_etokRate", diffEtokRate, true);
+    setValueWithColor("compare_etokWaitRate", diffEtokWaitRate, true);
 
-  // 営業戻しキャッチは個数と率の差分表示（HTMLには個数差分用はありませんので差分率だけ表示）
-  // 差分の個数表示を追加したい場合はHTMLに <div id="compare_catch"> を用意してください
-  setValueWithColor("compare_catchRate", diffCatchRate, true);
-}
+    // 営業戻しキャッチは個数と率の差分表示（HTMLには個数差分用はありませんので差分率だけ表示）
+    // 差分の個数表示を追加したい場合はHTMLに <div id="compare_catch"> を用意してください
+    setValueWithColor("compare_catchRate", diffCatchRate, true);
+    }
 
 
     // ✅ 初期表示更新
