@@ -43,6 +43,7 @@ field76_map = {
     "NURO光_003": "a05TL00000ljIddYAE",
     "So-net光_002": "a05IU00001CHHNDYA5",
     "So-net光_004": "a05TL00000YGL4vYAH",
+    "good NP_001": "a05TL00000mA0r7YAC"
 }
 
 BASIC_AUTH_PASSWORD = "gift2025"
