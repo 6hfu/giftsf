@@ -80,13 +80,17 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# 郵便番号から住所取得
+# 郵便番号から住所取得（分割版）
 def get_address_from_postalcode(postal_code):
+    """
+    郵便番号から住所を取得し、都道府県、市区町村、町名・番地に分割して返す
+    戻り値: (postal_code, state, city, street)
+    """
     if not postal_code:
-        return ""
+        return "", "", "", ""
     postal_code = postal_code.replace("-", "").strip()
     if len(postal_code) != 7 or not postal_code.isdigit():
-        return ""
+        return postal_code, "", "", ""
     url = f"https://zipcloud.ibsnet.co.jp/api/search?zipcode={postal_code}"
     try:
         res = requests.get(url)
@@ -94,21 +98,28 @@ def get_address_from_postalcode(postal_code):
         data = res.json()
         if data['results']:
             result = data['results'][0]
-            return result['address1'] + result['address2'] + result['address3']
+            state = result.get('address1', '')
+            city = result.get('address2', '')
+            street = result.get('address3', '')
+            return postal_code, state, city, street
         else:
-            return ""
+            return postal_code, "", "", ""
     except Exception:
-        return ""
+        return postal_code, "", "", ""
 
 def get_field_descriptions():
+    """
+    Salesforce Accountオブジェクトのフィールド情報取得
+    必要なフィールドのみフィルタリングして返す
+    """
     desc = sf.restful('sobjects/Account/describe')
     import_fields = [
         'Field206__c', 'Name', 'Field78__c', 'Field56__c', 'Field22__c',
         'Field23__c', 'Field24__c', 'Field25__c', 'Field76__c', 'Field8__c',
-        'Field207__c', 'ShippingPostalCode', 'Field6__c', 'Field9__c', 'Field40__c',
-        'X2__c', 'Field27__c', 'Field28__c', 'Field30__c', 'Field31__c',
-        'Field41__c', 'Field39__c', 'Field35__c', 'Field36__c', 'Field37__c',
-        'Field38__c', 'Field12__c', 'Field14__c', 'KDDI__c', 'KDDI1__c',
+        'Field207__c', 'ShippingPostalCode', 'ShippingState', 'ShippingCity', 'ShippingStreet',
+        'Field6__c', 'Field9__c', 'Field40__c', 'X2__c', 'Field27__c', 'Field28__c',
+        'Field30__c', 'Field31__c', 'Field41__c', 'Field39__c', 'Field35__c', 'Field36__c',
+        'Field37__c', 'Field38__c', 'Field12__c', 'Field14__c', 'KDDI__c', 'KDDI1__c',
         'NTT__c', 'NTT1__c', 'NTTX__c', 'Field184__c', 'Field229__c','Field271__c'
     ]
     field_defs = {}
@@ -150,7 +161,9 @@ def form():
         fields = get_field_descriptions()
         today = datetime.now(JST).date().isoformat()
         postal_code = request.args.get('ShippingPostalCode', '')
-        postal_address = get_address_from_postalcode(postal_code)
+
+        # 郵便番号から住所を分割して取得
+        postal_code, state, city, street = get_address_from_postalcode(postal_code)
 
         return render_template('form.html',
                                fields=fields,
@@ -159,13 +172,14 @@ def form():
                                basic_auth_user_id=login_id,
                                today=today,
                                postal_code=postal_code,
-                               postal_address=postal_address,
+                               postal_state=state,
+                               postal_city=city,
+                               postal_street=street,
                                username=display_name,
-                               department=department)  # ← departmentも必要なら
+                               department=department)
     except Exception as e:
         flash(f"Salesforceの取得中にエラーが発生しました: {str(e)}")
         return redirect(url_for('logout'))
-
 
 
 @app.route('/submit', methods=['POST'])
@@ -174,15 +188,17 @@ def submit():
     import_fields = [
         'Field206__c', 'Name', 'Field78__c', 'Field56__c', 'Field22__c',
         'Field23__c', 'Field24__c', 'Field25__c', 'Field76__c', 'Field8__c',
-        'Field207__c', 'ShippingPostalCode', 'Field6__c', 'Field9__c', 'Field40__c',
-        'X2__c', 'Field27__c', 'Field28__c', 'Field30__c', 'Field31__c',
-        'Field41__c', 'Field39__c', 'Field35__c', 'Field36__c', 'Field37__c',
-        'Field38__c', 'Field12__c', 'Field14__c', 'KDDI__c', 'KDDI1__c',
+        'Field207__c', 'ShippingPostalCode', 'ShippingState', 'ShippingCity', 'ShippingStreet',
+        'Field6__c', 'Field9__c', 'Field40__c', 'X2__c', 'Field27__c', 'Field28__c',
+        'Field30__c', 'Field31__c', 'Field41__c', 'Field39__c', 'Field35__c', 'Field36__c',
+        'Field37__c', 'Field38__c', 'Field12__c', 'Field14__c', 'KDDI__c', 'KDDI1__c',
         'NTT__c', 'NTT1__c', 'NTTX__c', 'Field184__c', 'Field229__c','Field271__c'
     ]
+
     form_data = {field: request.form.get(field) for field in import_fields}
     form_data['Field207__c'] = session.get('username', None)
 
+    # 日付フィールドの整形
     for date_field in ['Field24__c', 'Field41__c']:
         val = form_data.get(date_field)
         if val:
@@ -194,6 +210,7 @@ def submit():
         else:
             form_data[date_field] = None
 
+    # 時間フィールドの整形
     input_time_str = form_data.get("Field25__c")
     if input_time_str:
         try:
@@ -203,10 +220,20 @@ def submit():
         except Exception:
             form_data["Field25__c"] = None
 
+    # Field76__c のマッピング
     if form_data.get('Field76__c') in field76_map:
         form_data['Field76__c'] = field76_map[form_data['Field76__c']]
     else:
         form_data['Field76__c'] = None
+
+    # 郵便番号から住所を自動取得して Salesforce に送信（入力されている場合は上書きしない）
+    postal_code_input = form_data.get('ShippingPostalCode', '')
+    if postal_code_input:
+        postal_code, state, city, street = get_address_from_postalcode(postal_code_input)
+        form_data['ShippingPostalCode'] = postal_code
+        form_data['ShippingState'] = state
+        form_data['ShippingCity'] = city
+        form_data['ShippingStreet'] = street
 
     try:
         result = sf.Account.create(form_data)
