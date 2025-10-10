@@ -1,15 +1,271 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <title>管理者ページ</title>
+  <meta charset="UTF-8">
+  <title>管理者ページ</title>
+  <style>
+    body {
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      background-color: #f5f6fa;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #2c3e50;
+      color: white;
+      padding: 20px;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .container {
+      padding: 25px;
+    }
+    .info {
+      background: #ecf0f1;
+      padding: 10px 15px;
+      border-left: 5px solid #2980b9;
+      margin-bottom: 20px;
+    }
+    .top-links {
+      margin-bottom: 20px;
+    }
+    .top-links a {
+      color: #3498db;
+      text-decoration: none;
+      margin-right: 15px;
+    }
+    .filter-box {
+      margin-bottom: 20px;
+      padding: 10px;
+      background: #ffffff;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .filter-box input, .filter-box select {
+      padding: 6px;
+      margin-right: 10px;
+      width: 200px;
+    }
+    .filter-box button {
+      padding: 6px 12px;
+      background-color: #3498db;
+      border: none;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .filter-box button:hover {
+      background-color: #2980b9;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 13px;
+    }
+    th {
+      background-color: #3498db;
+      color: white;
+      cursor: pointer;
+    }
+    tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 4px;
+      box-sizing: border-box;
+    }
+    .btn {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background-color: #2980b9;
+    }
+  </style>
 </head>
 <body>
+  <header>
     <h1>管理者モード</h1>
-    <p>{{ username }} さんとしてログイン中（管理者）</p>
-    <ul>
-        <li><a href="{{ url_for('menu_page') }}">メインメニューへ戻る</a></li>
-        <li><a href="{{ url_for('logout') }}">ログアウト</a></li>
-    </ul>
+  </header>
+  <div class="container">
+    <div class="info">
+      <p>{{ username }} さんとしてログイン中（管理者）</p>
+    </div>
+
+    <div class="top-links">
+      <a href="{{ url_for('menu_page') }}">メインメニューへ戻る</a>
+      <a href="{{ url_for('logout') }}">ログアウト</a>
+    </div>
+
+    <div class="filter-box">
+      <label>取引先名: <input type="text" id="filterName" placeholder="例: 株式会社A"></label>
+      <label>商材名: <input type="text" id="filterProduct" placeholder="例: NURO光"></label>
+      <label>獲得者: <input type="text" id="filterOwner" placeholder="例: 佐藤"></label>
+      <button onclick="applyFilter()">絞り込み</button>
+      <button onclick="resetFilter()">リセット</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('update_records') }}">
+      <table id="recordsTable">
+        <thead>
+          <tr>
+            <th onclick="sortTable(0)">受注日</th>
+            <th onclick="sortTable(1)">取引先名</th>
+            <th onclick="sortTable(2)">所属部署</th>
+            <th onclick="sortTable(3)">獲得者</th>
+            <th onclick="sortTable(4)">獲得者（保存）</th>
+            <th onclick="sortTable(5)">前確者</th>
+            <th onclick="sortTable(6)">後確者</th>
+            <th onclick="sortTable(7)">前確ステータス</th>
+            <th onclick="sortTable(8)">CLOK日</th>
+            <th onclick="sortTable(9)">後確OK日</th>
+            <th onclick="sortTable(10)">申込日</th>
+            <th onclick="sortTable(11)">キャンセル日</th>
+            <th onclick="sortTable(12)">前確NG日</th>
+            <th onclick="sortTable(13)">後確NG日</th>
+            <th onclick="sortTable(14)">NG理由</th>
+            <th onclick="sortTable(15)">架電種別</th>
+            <th onclick="sortTable(16)">取次種別</th>
+            <th onclick="sortTable(17)">商材名</th>
+            <th onclick="sortTable(18)">リスト名</th>
+            <th onclick="sortTable(19)">エリア（東西）</th>
+            <th onclick="sortTable(20)">建物区分</th>
+            <th onclick="sortTable(21)">固定申込</th>
+            <th onclick="sortTable(22)">利用携帯Ⅰ</th>
+            <th onclick="sortTable(23)">携帯台数Ⅰ</th>
+            <th onclick="sortTable(24)">利用携帯Ⅱ</th>
+            <th onclick="sortTable(25)">携帯台数Ⅱ</th>
+            <th onclick="sortTable(26)">時間指定</th>
+            <th onclick="sortTable(27)">非勧奨ステータス</th>
+            <th onclick="sortTable(28)">申込受付番号</th>
+            <th onclick="sortTable(29)">自社OP契約日</th>
+            <th onclick="sortTable(30)">Lステ突合日</th>
+            <th onclick="sortTable(31)">メールアドレス</th>
+            <th>更新</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in records %}
+          <tr>
+            <td>{{ record.Field79__r.Field1__c }}</td>
+            <td>{{ record.Name }}</td>
+            <td>{{ record.Field140__c }}</td>
+            <td>{{ record.Field93__r.Field2__c }}</td>
+            <td>{{ record.Field211__c }}</td>
+            <td>{{ record.Field96__r.Field2__c }}</td>
+            <td>{{ record.Field102__r.Field2__c }}</td>
+            <td><input type="text" name="Field101__c_{{ record.Id }}" value="{{ record.Field101__c }}"></td>
+            <td>{{ record.CLOK__c }}</td>
+            <td>{{ record.atokakuOK__c }}</td>
+            <td>{{ record.Field118__c }}</td>
+            <td>{{ record.Field119__c }}</td>
+            <td>{{ record.maekakuNGi__c }}</td>
+            <td>{{ record.atokakuNGi__c }}</td>
+            <td>{{ record.NGriyu__c }}</td>
+            <td>{{ record.Field1__c }}</td>
+            <td>{{ record.Field78__c }}</td>
+            <td>{{ record.Field76__r.Name }}</td>
+            <td>{{ record.Field22__c }}</td>
+            <td>{{ record.Field43__c }}</td>
+            <td>{{ record.Field6__c }}</td>
+            <td>{{ record.Field56__c }}</td>
+            <td>{{ record.Field12__c }}</td>
+            <td>{{ record.Field14__c }}</td>
+            <td>{{ record.Field13__c }}</td>
+            <td>{{ record.Field15__c }}</td>
+            <td>{{ record.Field23__c }}</td>
+            <td>{{ record.Field34__c }}</td>
+            <td>{{ record.Field63__c }}</td>
+            <td>{{ record.Field262__c }}</td>
+            <td>{{ record.Ltotugo__c }}</td>
+            <td>{{ record.Field266__c }}</td>
+            <td><button type="submit" name="update_id" value="{{ record.Id }}" class="btn">更新</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </form>
+  </div>
+
+  <script>
+    // 絞り込み
+    function applyFilter() {
+      const name = document.getElementById('filterName').value.toLowerCase();
+      const product = document.getElementById('filterProduct').value.toLowerCase();
+      const owner = document.getElementById('filterOwner').value.toLowerCase();
+      const rows = document.querySelectorAll('#recordsTable tbody tr');
+
+      rows.forEach(row => {
+        const nameText = row.cells[1].textContent.toLowerCase();
+        const productText = row.cells[17].textContent.toLowerCase();
+        const ownerText = row.cells[3].textContent.toLowerCase();
+
+        if (
+          (name === "" || nameText.includes(name)) &&
+          (product === "" || productText.includes(product)) &&
+          (owner === "" || ownerText.includes(owner))
+        ) {
+          row.style.display = "";
+        } else {
+          row.style.display = "none";
+        }
+      });
+    }
+
+    function resetFilter() {
+      document.getElementById('filterName').value = "";
+      document.getElementById('filterProduct').value = "";
+      document.getElementById('filterOwner').value = "";
+      applyFilter();
+    }
+
+    // ソート機能
+    function sortTable(n) {
+      const table = document.getElementById("recordsTable");
+      let switching = true;
+      let dir = "asc";
+      while (switching) {
+        switching = false;
+        const rows = table.rows;
+        for (let i = 1; i < (rows.length - 1); i++) {
+          let shouldSwitch = false;
+          const x = rows[i].getElementsByTagName("TD")[n];
+          const y = rows[i + 1].getElementsByTagName("TD")[n];
+          let xContent = x.textContent || x.innerText;
+          let yContent = y.textContent || y.innerText;
+          if (dir === "asc" && xContent.toLowerCase() > yContent.toLowerCase()) {
+            shouldSwitch = true;
+            break;
+          } else if (dir === "desc" && xContent.toLowerCase() < yContent.toLowerCase()) {
+            shouldSwitch = true;
+            break;
+          }
+        }
+        if (shouldSwitch) {
+          rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+          switching = true;
+        } else {
+          if (dir === "asc") {
+            dir = "desc";
+            switching = true;
+          }
+        }
+      }
+    }
+  </script>
 </body>
 </html>
