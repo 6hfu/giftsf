@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>管理者ダッシュボード</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { font-family: 'Segoe UI', sans-serif; margin: 40px; background: #f8f9fa; }
+h1 { text-align: center; margin-bottom: 30px; }
+.card { background: white; padding: 15px 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 25px; }
+table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+th { background: #007bff; color: white; cursor: pointer; }
+tbody tr:nth-child(even) { background: #f2f2f2; }
+</style>
+</head>
+<body>
+<h1>管理者ダッシュボード</h1>
+<p>対象日: {{ today_label }}</p>
+
+<div class="card">
+  <h2>全体サマリー</h2>
+  <p>受注数: {{ total_summary.受注数 }} 件</p>
+  <p>CLOK数: {{ total_summary.CLOK数 }} 件</p>
+  <p>CLOK率: {{ total_summary.CLOK率 }}%</p>
+</div>
+
+<div class="card">
+  <h2>エリア別サマリー</h2>
+  <table>
+    <tr><th>エリア</th><th>受注数</th><th>CLOK数</th><th>CLOK率</th></tr>
+    {% for k,v in area_summary.items() %}
+    <tr><td>{{ k }}</td><td>{{ v.受注数 }}</td><td>{{ v.CLOK数 }}</td><td>{{ v.CLOK率 }}%</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2>部署別サマリー</h2>
+  <table>
+    <tr><th>部署</th><th>受注数</th><th>CLOK数</th><th>CLOK率</th></tr>
+    {% for k,v in dept_summary.items() %}
+    <tr><td>{{ k }}</td><td>{{ v.受注数 }}</td><td>{{ v.CLOK数 }}</td><td>{{ v.CLOK率 }}%</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2>個人別集計</h2>
+  <input type="text" id="filterInput" placeholder="名前・部署で検索..." style="margin-bottom:10px; padding:6px; width:30%;">
+  <table id="dataTable">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)">獲得者</th>
+        <th onclick="sortTable(1)">稼働時間</th>
+        <th onclick="sortTable(2)">受注数</th>
+        <th onclick="sortTable(3)">受注効率</th>
+        <th onclick="sortTable(4)">CLOK数</th>
+        <th onclick="sortTable(5)">CLOK効率</th>
+        <th onclick="sortTable(6)">CLOK率</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in individuals %}
+      <tr>
+        <td>{{ row.獲得者 }}</td>
+        <td>{{ row.稼働時間 }}</td>
+        <td>{{ row.受注数 }}</td>
+        <td>{{ row.受注効率 }}</td>
+        <td>{{ row.CLOK数 }}</td>
+        <td>{{ row.CLOK効率 }}</td>
+        <td>{{ row.CLOK率 }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function sortTable(n) {
+  var table = document.getElementById("dataTable");
+  var switching = true;
+  var dir = "asc"; 
+  while (switching) {
+    switching = false;
+    var rows = table.rows;
+    for (var i = 1; i < (rows.length - 1); i++) {
+      var shouldSwitch = false;
+      var x = rows[i].getElementsByTagName("TD")[n];
+      var y = rows[i + 1].getElementsByTagName("TD")[n];
+      var cmpX = isNaN(parseFloat(x.innerHTML)) ? x.innerHTML.toLowerCase() : parseFloat(x.innerHTML);
+      var cmpY = isNaN(parseFloat(y.innerHTML)) ? y.innerHTML.toLowerCase() : parseFloat(y.innerHTML);
+      if ((dir == "asc" && cmpX > cmpY) || (dir == "desc" && cmpX < cmpY)) {
+        shouldSwitch = true;
+        break;
+      }
+    }
+    if (shouldSwitch) {
+      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+      switching = true;
+    } else {
+      if (dir == "asc") dir = "desc";
+    }
+  }
+}
+
+document.getElementById("filterInput").addEventListener("keyup", function() {
+  var value = this.value.toLowerCase();
+  var rows = document.querySelectorAll("#dataTable tbody tr");
+  rows.forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(value) ? "" : "none";
+  });
+});
+</script>
+
+</body>
+</html>
