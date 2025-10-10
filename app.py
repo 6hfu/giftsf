@@ -77,6 +77,15 @@ def login_required(f):
             return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('is_admin'):
+            flash("管理者権限が必要です")
+            return redirect(url_for('menu_page'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 
 # 郵便番号から住所取得（分割版）
 def get_address_from_postalcode(postal_code):
