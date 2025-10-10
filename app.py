@@ -37,13 +37,11 @@ sf = Salesforce(
 )
 
 field76_map = {
-    "AU光_007": "a05IU00001CHHNJYA5",
-    "AU光_008": "a05IU00001CHHMwYAP",
+    "So-net光_004(WAF)": "a05TL00000YGL4vYAH",
     "AU光_010(WAF)": "a05TL00000ncTETYA2",
     "NURO光_003": "a05TL00000ljIddYAE",
-    "So-net光_002": "a05IU00001CHHNDYA5",
-    "So-net光_004(WAF)": "a05TL00000YGL4vYAH",
-    "good NP_001": "a05TL00000mA0r7YAC"
+    "good NP_001": "a05TL00000mA0r7YAC",
+    "AU光_008": "a05IU00001CHHMwYAP"
 }
 
 BASIC_AUTH_PASSWORD = "gift2025"
