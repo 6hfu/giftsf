@@ -442,27 +442,62 @@ def dashboard():
 
 
 @app.route("/admin")
+@admin_required
 def admin_page():
-    # SalesforceやDBから取得する実データ例
-    records = sf.query_all("""
-        SELECT Id, Name, Field140__c, Field93__r.Field2__c, Field211__c,
-               Field96__r.Field2__c, Field102__r.Field2__c, Field101__c,
-               CLOK__c, atokakuOK__c, Field118__c, Field119__c, maekakuNGi__c,
-               atokakuNGi__c, NGriyu__c, Field1__c, Field78__c, Field76__r.Name,
-               Field22__c, Field43__c, Field6__c, Field56__c, Field12__c,
-               Field14__c, Field13__c, Field15__c, Field23__c, Field34__c,
-               Field63__c, Field262__c, Ltotugo__c, Field266__c,
-               Field79__r.Field1__c
-        FROM CustomObject__c
-    """)["records"]
-    return render_template("admin_page.html", username="管理者", records=records)
+    try:
+        # Salesforceから全取引先案件データを取得
+        query = """
+            SELECT Id, Name, Field140__c, Field93__r.Field2__c, Field211__c,
+                   Field96__r.Field2__c, Field102__r.Field2__c, Field101__c,
+                   CLOK__c, atokakuOK__c, Field118__c, Field119__c, maekakuNGi__c,
+                   atokakuNGi__c, NGriyu__c, Field1__c, Field78__c, Field76__r.Name,
+                   Field22__c, Field43__c, Field6__c, Field56__c, Field12__c,
+                   Field14__c, Field13__c, Field15__c, Field23__c, Field34__c,
+                   Field63__c, Field262__c, Ltotugo__c, Field266__c,
+                   Field79__r.Field1__c
+            FROM Account
+            ORDER BY Field79__r.Field1__c DESC NULLS LAST
+            LIMIT 1000
+        """
+        result = sf.query_all(query)
+        records = result.get("records", [])
+
+        return render_template("admin_page.html",
+                               username="管理者",
+                               records=records)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f"管理者ページでエラーが発生しました: {str(e)}")
+        return redirect(url_for("menu_page"))
+
 
 @app.route("/update_records", methods=["POST"])
+@admin_required
 def update_records():
-    record_id = request.form.get("update_id")
-    new_status = request.form.get(f"Field101__c_{record_id}")
-    sf.CustomObject__c.update(record_id, {"Field101__c": new_status})
-    return redirect(url_for("admin_page"))
+    try:
+        record_id = request.form.get("update_id")
+        # 更新対象フィールド（例：ステータス）
+        new_status = request.form.get(f"Field101__c_{record_id}")
+
+        if not record_id:
+            flash("更新対象のレコードIDが指定されていません。")
+            return redirect(url_for("admin_page"))
+
+        update_data = {}
+        if new_status is not None:
+            update_data["Field101__c"] = new_status
+
+        if update_data:
+            sf.Account.update(record_id, update_data)
+            flash(f"レコード {record_id} を更新しました。")
+
+        return redirect(url_for("admin_page"))
+
+    except Exception as e:
+        flash(f"更新時にエラーが発生しました: {str(e)}")
+        return redirect(url_for("admin_page"))
 
 
 
