@@ -441,10 +441,29 @@ def dashboard():
         return redirect(url_for('menu_page'))
 
 
-@app.route('/admin')
-@admin_required
+@app.route("/admin")
 def admin_page():
-    return render_template('admin.html', username=session.get('username'))
+    # SalesforceやDBから取得する実データ例
+    records = sf.query_all("""
+        SELECT Id, Name, Field140__c, Field93__r.Field2__c, Field211__c,
+               Field96__r.Field2__c, Field102__r.Field2__c, Field101__c,
+               CLOK__c, atokakuOK__c, Field118__c, Field119__c, maekakuNGi__c,
+               atokakuNGi__c, NGriyu__c, Field1__c, Field78__c, Field76__r.Name,
+               Field22__c, Field43__c, Field6__c, Field56__c, Field12__c,
+               Field14__c, Field13__c, Field15__c, Field23__c, Field34__c,
+               Field63__c, Field262__c, Ltotugo__c, Field266__c,
+               Field79__r.Field1__c
+        FROM CustomObject__c
+    """)["records"]
+    return render_template("admin_page.html", username="管理者", records=records)
+
+@app.route("/update_records", methods=["POST"])
+def update_records():
+    record_id = request.form.get("update_id")
+    new_status = request.form.get(f"Field101__c_{record_id}")
+    sf.CustomObject__c.update(record_id, {"Field101__c": new_status})
+    return redirect(url_for("admin_page"))
+
 
 
 
