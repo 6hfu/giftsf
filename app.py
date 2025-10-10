@@ -273,8 +273,19 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
+
+        # 管理者ログイン（パスワードがadminなら）
+        if password == "admin":
+            session['username'] = username
+            session['is_admin'] = True
+            session['last_activity'] = datetime.now(JST).isoformat()
+            flash("管理者モードでログインしました")
+            return redirect(url_for('admin_page'))
+
+        # 通常ログイン
         if check_auth(username, password):
             session['username'] = username
+            session['is_admin'] = False
             session['last_activity'] = datetime.now(JST).isoformat()
             flash('ログイン成功しました')
             next_page = request.args.get('next')
@@ -284,6 +295,7 @@ def login():
             return render_template('login.html')
     else:
         return render_template('login.html')
+
 
 @app.route('/logout')
 def logout():
@@ -429,6 +441,10 @@ def dashboard():
         return redirect(url_for('menu_page'))
 
 
+@app.route('/admin')
+@admin_required
+def admin_page():
+    return render_template('admin.html', username=session.get('username'))
 
 
 
