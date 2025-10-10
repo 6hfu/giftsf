@@ -499,6 +499,98 @@ def update_records():
         flash(f"更新時にエラーが発生しました: {str(e)}")
         return redirect(url_for("admin_page"))
 
+@app.route("/admin_dashboard")
+@login_required
+def admin_dashboard():
+    today = datetime.now()
+    today_str = today.strftime("%Y-%m-%d")
+    today_day = today.day  # 例: 10
+    target_label = f"{today_day}日稼働時間"
+
+    # --- ラベルからAPI参照名を特定 ---
+    field_describe = sf.CustomObject11__c.describe()
+    day_field_api = None
+    for field in field_describe['fields']:
+        if field['label'] == target_label:
+            day_field_api = field['name']
+            break
+
+    if not day_field_api:
+        return f"⚠ {target_label} のフィールドが見つかりません。Salesforceを確認してください。"
+
+    # --- 稼働時間データ ---
+    work_query = f"""
+        SELECT Name, Field163__c, {day_field_api}
+        FROM CustomObject11__c
+        WHERE Field163__c = THIS_MONTH
+        AND Name LIKE '%獲得者%'
+    """
+    work_data = sf.query(work_query)["records"]
+    df_work = pd.DataFrame(work_data)
+    if df_work.empty:
+        return "⚠ 稼働データが取得できませんでした。"
+
+    # --- 案件データ（Account） ---
+    account_query = """
+        SELECT Name, Field79__r.Field1__c, CLOK__c,
+               Field211__c, Field140__c, Field161__c
+        FROM Account
+        WHERE Field79__r.Field1__c != null OR CLOK__c != null
+    """
+    account_data = sf.query(account_query)["records"]
+    df_acc = pd.DataFrame(account_data)
+
+    # --- 日付整形 ---
+    df_acc["受注日"] = pd.to_datetime(df_acc["Field79__r.Field1__c"], errors="coerce")
+    df_acc["CLOK日"] = pd.to_datetime(df_acc["CLOK__c"], errors="coerce")
+    df_acc["所属部署"] = df_acc["Field140__c"]
+    df_acc["所属エリア"] = df_acc["Field161__c"]
+    df_acc["獲得者"] = df_acc["Field211__c"]
+
+    # --- 今日分フィルタ ---
+    df_today = df_acc[
+        (df_acc["受注日"].dt.date == today.date()) | 
+        (df_acc["CLOK日"].dt.date == today.date())
+    ]
+
+    # === 全体・エリア・部署別集計 ===
+    def summarize(df):
+        orders = df["受注日"].notna().sum()
+        cloks = df["CLOK日"].notna().sum()
+        rate = round((cloks / orders) * 100, 1) if orders > 0 else 0
+        return {"受注数": orders, "CLOK数": cloks, "CLOK率": rate}
+
+    total_summary = summarize(df_today)
+    area_summary = df_today.groupby("所属エリア").apply(summarize).to_dict()
+    dept_summary = df_today.groupby("所属部署").apply(summarize).to_dict()
+
+    # === 個人別集計 ===
+    df_individual = (
+        df_today.groupby("獲得者")
+        .agg(受注数=("受注日", "count"), CLOK数=("CLOK日", "count"))
+        .reset_index()
+    )
+
+    # 稼働時間マージ
+    df_work.rename(columns={day_field_api: "稼働時間"}, inplace=True)
+    df_work["獲得者"] = df_work["Name"].str.replace("様", "").str.strip()
+    df_merged = pd.merge(df_individual, df_work, on="獲得者", how="left")
+
+    # 効率と率を計算
+    df_merged["受注効率"] = (df_merged["受注数"] / df_merged["稼働時間"]).round(2)
+    df_merged["CLOK効率"] = (df_merged["CLOK数"] / df_merged["稼働時間"]).round(2)
+    df_merged["CLOK率"] = (
+        (df_merged["CLOK数"] / df_merged["受注数"]) * 100
+    ).fillna(0).round(1)
+
+    return render_template(
+        "admin_dashboard.html",
+        total_summary=total_summary,
+        area_summary=area_summary,
+        dept_summary=dept_summary,
+        individuals=df_merged.to_dict(orient="records"),
+        today_label=target_label,
+    )
 
 
 
