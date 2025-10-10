@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>管理者ページ</title>
+</head>
+<body>
+    <h1>管理者モード</h1>
+    <p>{{ username }} さんとしてログイン中（管理者）</p>
+    <ul>
+        <li><a href="{{ url_for('menu_page') }}">メインメニューへ戻る</a></li>
+        <li><a href="{{ url_for('logout') }}">ログアウト</a></li>
+    </ul>
+</body>
+</html>
