@@ -10,6 +10,7 @@ import pytz
 import re
 from flask import jsonify, render_template
 import json
+import pandas as pd
 
 
 # 環境変数読み込み
