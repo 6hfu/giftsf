@@ -62,13 +62,37 @@ def check_session_timeout():
         # アクティビティ更新
         session['last_activity'] = now.isoformat()
 
+
 def check_auth(username, password):
     if password != BASIC_AUTH_PASSWORD:
         return False
-    query = "SELECT Field11__c FROM CustomObject10__c WHERE Field11__c != null"
-    res = sf.query(query)
-    valid_usernames = [record['Field11__c'] for record in res['records']]
-    return username in valid_usernames
+
+    try:
+        # Field11__c（ログインID）で検索し、Field23__c の有無を確認
+        query = f"""
+            SELECT Field11__c, Field23__c
+            FROM CustomObject10__c
+            WHERE Field11__c = '{username}'
+            LIMIT 1
+        """
+        res = sf.query(query)
+
+        if res['totalSize'] == 0:
+            # ユーザーが存在しない
+            return False
+
+        record = res['records'][0]
+        # Field23__c に値が入っていたらログイン拒否
+        if record.get('Field23__c'):
+            return False
+
+        # Field11__c が存在し、Field23__c が空ならログインOK
+        return True
+
+    except Exception as e:
+        print(f"Salesforce認証中にエラー発生: {e}")
+        return False
+
 
 def login_required(f):
     @wraps(f)
