@@ -70,7 +70,7 @@
         }
 
         .large-textarea {
-        min-height: 300px; /* 好きな高さに調整可能 */
+            min-height: 300px;
         }
 
         button.btn-primary {
@@ -85,36 +85,75 @@
         }
 
         .custom-button {
-        display: inline-block;
-        padding: 8px 16px;
-        font-size: 14px;
-        color: #007bff;
-        border: 2px solid #007bff;
-        border-radius: 6px;
-        text-decoration: none;
-        background-color: white;
-        transition: all 0.3s ease;
-        font-weight: bold;
+            display: inline-block;
+            padding: 8px 16px;
+            font-size: 14px;
+            color: #007bff;
+            border: 2px solid #007bff;
+            border-radius: 6px;
+            text-decoration: none;
+            background-color: white;
+            transition: all 0.3s ease;
+            font-weight: bold;
         }
-        
+
         .custom-button:hover {
             background-color: #007bff;
             color: white;
             text-decoration: none;
             box-shadow: 0 4px 6px rgba(0, 123, 255, 0.2);
         }
-        
+
         .text-center {
             text-align: center;
         }
-        
+
         .mb-4 {
             margin-bottom: 1.5rem;
         }
 
+        /* ② サジェストボックス */
+        .suggestions-box {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            max-height: 150px;
+            overflow-y: auto;
+            width: 100%;
+            z-index: 1000;
+            border-radius: 0.5rem;
+        }
 
+        .suggestion-item {
+            padding: 6px 10px;
+            cursor: pointer;
+        }
+
+        .suggestion-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* エラーと必須 */
+        .is-invalid {
+            border-color: #dc3545 !important;
+            box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+        }
+        .select2-container.is-invalid .select2-selection {
+            border-color: #dc3545 !important;
+            box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+        }
+        #zip-warning {
+            color: red;
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+        .required {
+            font-size: 0.8em;
+            color: red;
+        }
     </style>
 </head>
+
 <body>
 <div class="form-container">
     <h2>Salesforce レコード作成</h2>
@@ -127,6 +166,13 @@
 
 
     <form method="POST" action="/submit">
+
+        <div class="mb-3 position-relative">
+            <label for="Field270__c_name" class="form-label">代電者（必要があれば）</label>
+            <input type="text" id="Field270__c_name" class="form-control" placeholder="名前を入力すると候補が表示されます">
+            <input type="hidden" name="Field270__c" id="Field270__c">
+            <div id="user_suggestions" class="suggestions-box"></div>
+        </div>
         {% set order = [
             'Name', 'X2__c', 'Field76__c', 'Field78__c', 'Field56__c', 'Field271__c',
             'Field22__c', 'Field23__c', 'Field24__c', 'Field25__c', 'Field8__c',
@@ -190,7 +236,7 @@
                     <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                         {{ field.label }}
                         {% if api_name in required_fields %}
-                            <span class="required">※必須</span>
+
 
                         {% endif %}
                     </label>
@@ -215,7 +261,7 @@
                     <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                         {{ field.label }}
                         {% if api_name in required_fields %}
-                            <span class="required">※必須</span>
+
 
                         {% endif %}
                     </label>
@@ -233,7 +279,7 @@
                     <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                         {{ field.label }}
                         {% if api_name in required_fields %}
-                            <span class="required">※必須</span>
+
 
                         {% endif %}
                     </label>
@@ -265,7 +311,7 @@
                         <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                             {{ field.label }}
                             {% if api_name in required_fields %}
-                                <span class="required">※必須</span>
+
 
                             {% endif %}
                         </label>
@@ -278,7 +324,7 @@
                         <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                             {{ field.label }}
                             {% if api_name in required_fields %}
-                                <span class="required">※必須</span>
+
 
                             {% endif %}
                         </label>
@@ -290,7 +336,7 @@
                         <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                             {{ field.label }}
                             {% if api_name in required_fields %}
-                                <span class="required">※必須</span>
+
 
                             {% endif %}
                         </label>
@@ -307,7 +353,7 @@
                         <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                             {{ field.label }}
                             {% if api_name in required_fields %}
-                                <span class="required">※必須</span>
+
 
                             {% endif %}
                         </label>
@@ -325,176 +371,224 @@
 </div>
 
 <script>
-    $(document).ready(function () {
-        // select2 初期化
-        $('.select2').select2({ width: '100%' });
+$(document).ready(function () {
+    // ==========================
+    // select2 初期化
+    // ==========================
+    $('.select2').select2({ width: '100%' });
 
-        // Enterキーでフォームが送信されるのを防止（Textareaを除く）
-        $('form').on('keydown', function (e) {
-            if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
-                e.preventDefault();
-                return false;
-            }
-        });
-
-        // 郵便番号入力後の住所自動補完
-        $('#ShippingPostalCode').on('blur', function () {
-            const input = $(this).val().trim();
-            const $warning = $('#zip-warning');
-            $warning.text('');
-
-            if (input === '') return;
-
-            const valid = /^\d{7}$|^\d{3}-\d{4}$/.test(input);
-            if (!valid) {
-                $warning.text('郵便番号の形式が正しくありません（0000000 または 000-0000）');
-                return;
-            }
-
-            const zip = input.replace('-', '');
-            if (zip.length !== 7 || !/^\d+$/.test(zip)) return;
-
-            $.ajax({
-                url: `https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`,
-                dataType: 'jsonp',
-                success: function (response) {
-                    if (response && response.results && response.results.length > 0) {
-                        const result = response.results[0];
-                        $('#ShippingState').val(result.address1);
-                        $('#ShippingCity').val(result.address2);
-                        $('#ShippingStreet').val(result.address3);
-                    } else {
-                        $warning.text('該当する住所が見つかりませんでした。');
-                    }
-                },
-                error: function () {
-                    $warning.text('住所検索中にエラーが発生しました。');
-                }
-            });
-        });
-
-        // 必須項目のAPI名リスト（PythonのrequiredFieldsと合わせてください）
-        const requiredFields = [
-            'Name',
-            'Field76__c',
-            'Field78__c',
-            'Field56__c',
-            'Field22__c',
-            'Field23__c',
-            'Field24__c',
-            'Field25__c',
-            'Field9__c',
-            'Field12__c'
-        ];
-
-        window.addEventListener('DOMContentLoaded', () => {
-            requiredFields.forEach(apiName => {
-            // data-api-name属性を持つlabelを探す
-            const label = document.querySelector(`label[data-api-name="${apiName}"]`);
-            if (label) {
-                // 小さい赤文字の「※必須」を追加
-                const span = document.createElement('small');
-                span.className = 'text-danger ms-1';
-                span.textContent = '※必須';
-                label.appendChild(span);
-            }
-            });
-        });
-
-        $('form').on('submit', function (e) {
-            let isValid = true;
-
-            requiredFields.forEach(function (field) {
-                if (field === 'Field25__c') {
-                    $('#Field25__c_hour, #Field25__c_minute').removeClass('is-invalid');
-                } else if (field === 'Field76__c') {
-                    $('#Field76__c').removeClass('is-invalid');
-                    $('#select2-Field76__c-container').parent().removeClass('is-invalid');
-                } else {
-                    $('#' + field).removeClass('is-invalid');
-                }
-            });
-
-            requiredFields.forEach(function (field) {
-                let val = '';
-                if (field === 'Field25__c') {
-                    val = $('#Field25__c').val().trim();
-                    if (!val) {
-                        $('#Field25__c_hour, #Field25__c_minute').addClass('is-invalid');
-                        isValid = false;
-                    }
-                } else if (field === 'Field76__c') {
-                    val = $('#Field76__c').val();
-                    if (!val) {
-                        $('#Field76__c').addClass('is-invalid');
-                        $('#select2-Field76__c-container').parent().addClass('is-invalid');
-                        isValid = false;
-                    }
-                } else {
-                    val = $('#' + field).val();
-                    if (!val || val.trim() === '') {
-                        $('#' + field).addClass('is-invalid');
-                        isValid = false;
-                    }
-                }
-            });
-
-            if (!isValid) {
-                alert('未入力の必須項目があります。赤枠の項目を入力してください。');
-                e.preventDefault();
-                return false;
-            }
-        });
-
-        // 時間の初期値セットと連動処理
-        const now = new Date();
-        const hour = now.getHours().toString().padStart(2, '0');
-        const minute = (Math.floor(now.getMinutes() / 5) * 5).toString().padStart(2, '0');
-        $('#Field25__c_hour').val(hour);
-        $('#Field25__c_minute').val(minute);
-
-        function updateField25() {
-            const h = $('#Field25__c_hour').val();
-            const m = $('#Field25__c_minute').val();
-            $('#Field25__c').val(`${h}:${m}`);
+    // ==========================
+    // Enterキーでフォーム送信を防止（Textarea除く）
+    // ==========================
+    $('form').on('keydown', function (e) {
+        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            return false;
         }
-
-        $('#Field25__c_hour, #Field25__c_minute').on('change', updateField25);
-        updateField25();
     });
 
-    
+    // ==========================
+    // 郵便番号入力後の住所自動補完
+    // ==========================
+    $('#ShippingPostalCode').on('blur', function () {
+        const input = $(this).val().trim();
+        const $warning = $('#zip-warning');
+        $warning.text('');
+
+        if (input === '') return;
+
+        const valid = /^\d{7}$|^\d{3}-\d{4}$/.test(input);
+        if (!valid) {
+            $warning.text('郵便番号の形式が正しくありません（0000000 または 000-0000）');
+            return;
+        }
+
+        const zip = input.replace('-', '');
+        if (zip.length !== 7 || !/^\d+$/.test(zip)) return;
+
+        $.ajax({
+            url: `https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`,
+            dataType: 'jsonp',
+            success: function (response) {
+                if (response && response.results && response.results.length > 0) {
+                    const result = response.results[0];
+                    $('#ShippingState').val(result.address1);
+                    $('#ShippingCity').val(result.address2);
+                    $('#ShippingStreet').val(result.address3);
+                } else {
+                    $warning.text('該当する住所が見つかりませんでした。');
+                }
+            },
+            error: function () {
+                $warning.text('住所検索中にエラーが発生しました。');
+            }
+        });
+    });
+
+    // ==========================
+    // 必須項目
+    // ==========================
+    const requiredFields = [
+        'Name',
+        'Field76__c',
+        'Field78__c',
+        'Field56__c',
+        'Field22__c',
+        'Field23__c',
+        'Field24__c',
+        'Field25__c',
+        'Field9__c',
+        'Field12__c'
+    ];
+
+    // 「※必須」マーク追加
+    requiredFields.forEach(apiName => {
+        const label = document.querySelector(`label[data-api-name="${apiName}"]`);
+        if (label) {
+            const span = document.createElement('small');
+            span.className = 'text-danger ms-1';
+            span.textContent = '※必須';
+            label.appendChild(span);
+        }
+    });
+
+    // ==========================
+    // フォーム送信時のバリデーション＋送信ボタン制御
+    // ==========================
     $('form').on('submit', function (e) {
-        const form = this;
-    
-        if (!form.checkValidity()) return;
-    
-        const $btn = $(form).find('button[type="submit"]');
+        let isValid = true;
+
+        // 既存エラー解除
+        requiredFields.forEach(field => {
+            if (field === 'Field25__c') {
+                $('#Field25__c_hour, #Field25__c_minute').removeClass('is-invalid');
+            } else if (field === 'Field76__c') {
+                $('#Field76__c, #select2-Field76__c-container').parent().removeClass('is-invalid');
+            } else {
+                $('#' + field).removeClass('is-invalid');
+            }
+        });
+
+        // 入力チェック
+        requiredFields.forEach(field => {
+            let val = '';
+            if (field === 'Field25__c') {
+                val = $('#Field25__c').val().trim();
+                if (!val) {
+                    $('#Field25__c_hour, #Field25__c_minute').addClass('is-invalid');
+                    isValid = false;
+                }
+            } else if (field === 'Field76__c') {
+                val = $('#Field76__c').val();
+                if (!val) {
+                    $('#Field76__c, #select2-Field76__c-container').parent().addClass('is-invalid');
+                    isValid = false;
+                }
+            } else {
+                val = $('#' + field).val();
+                if (!val || val.trim() === '') {
+                    $('#' + field).addClass('is-invalid');
+                    isValid = false;
+                }
+            }
+        });
+
+        if (!isValid) {
+            alert('未入力の必須項目があります。赤枠の項目を入力してください。');
+            e.preventDefault();
+            return false;
+        }
+
+        // 送信ボタン制御
+        const $btn = $(this).find('button[type="submit"]');
         $btn.prop('disabled', true).text('送信中...');
-    
-        // 10秒後に再有効化
         setTimeout(() => {
             $btn.prop('disabled', false).text('送信');
         }, 10000);
     });
 
+    // ==========================
+    // 時間の初期値セットと連動処理
+    // ==========================
+    const now = new Date();
+    const hour = now.getHours().toString().padStart(2, '0');
+    const minute = (Math.floor(now.getMinutes() / 5) * 5).toString().padStart(2, '0');
+    $('#Field25__c_hour').val(hour);
+    $('#Field25__c_minute').val(minute);
 
-    $(document).ready(function () {
+    function updateField25() {
+        const h = $('#Field25__c_hour').val();
+        const m = $('#Field25__c_minute').val();
+        $('#Field25__c').val(`${h}:${m}`);
+    }
+
+    $('#Field25__c_hour, #Field25__c_minute').on('change', updateField25);
+    updateField25();
+
+    // ==========================
+    // テンプレート挿入機能
+    // ==========================
     $('.apply-template').click(function () {
         const container = $(this).closest('.mb-3');
         const templateText = container.find('.template-selector').val();
         const textarea = container.find('textarea');
 
         if (templateText) {
-        const current = textarea.val();
-        textarea.val(current + (current ? '\n' : '') + templateText);
+            const current = textarea.val();
+            textarea.val(current + (current ? '\n' : '') + templateText);
         }
     });
-    });
 
+    // ==========================
+    // Field270__c サジェスト機能
+    // ==========================
+    const input = document.getElementById("Field270__c_name");
+    const hiddenField = document.getElementById("Field270__c");
+    const suggestionsBox = document.getElementById("user_suggestions");
+    let timeout = null;
 
+    if (input && hiddenField && suggestionsBox) {
+        input.addEventListener("input", function () {
+            clearTimeout(timeout);
+            const query = this.value.trim();
+            if (!query) {
+                suggestionsBox.innerHTML = "";
+                hiddenField.value = "";
+                return;
+            }
 
+            timeout = setTimeout(() => {
+                fetch(`/api/search_user?q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        suggestionsBox.innerHTML = "";
+                        data.forEach(user => {
+                            const div = document.createElement("div");
+                            div.className = "suggestion-item";
+                            div.textContent = `${user.name}（${user.login}）`;
+                            div.addEventListener("click", () => {
+                                input.value = user.name;
+                                hiddenField.value = user.id;
+                                suggestionsBox.innerHTML = "";
+                            });
+                            suggestionsBox.appendChild(div);
+                        });
+                    })
+                    .catch(() => {
+                        suggestionsBox.innerHTML = "<div class='text-muted px-2'>検索中にエラーが発生しました。</div>";
+                    });
+            }, 300);
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!suggestionsBox.contains(e.target) && e.target !== input) {
+                suggestionsBox.innerHTML = "";
+            }
+        });
+    }
+});
 </script>
+
 
 
 <style>
