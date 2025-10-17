@@ -224,7 +224,7 @@ def submit():
         'Field6__c', 'Field9__c', 'Field40__c', 'X2__c', 'Field27__c', 'Field28__c',
         'Field30__c', 'Field31__c', 'Field41__c', 'Field39__c', 'Field35__c', 'Field36__c',
         'Field37__c', 'Field38__c', 'Field12__c', 'Field14__c', 'KDDI__c', 'KDDI1__c',
-        'NTT__c', 'NTT1__c', 'NTTX__c', 'Field184__c', 'Field229__c','Field271__c'
+        'NTT__c', 'NTT1__c', 'NTTX__c', 'Field184__c', 'Field229__c','Field271__c','Field270__c'
     ]
 
     form_data = {field: request.form.get(field) for field in import_fields}
@@ -617,7 +617,36 @@ def admin_dashboard():
         today_label=target_label,
     )
 
+@app.route('/api/search_user', methods=['GET'])
+@login_required
+def search_user():
+    keyword = request.args.get('q', '').strip()
+    if not keyword:
+        return jsonify([])
 
+    try:
+        # 名前 or ログインID（Field11__c）で部分一致検索
+        soql = f"""
+            SELECT Id, Name, Field11__c
+            FROM CustomObject10__c
+            WHERE Name LIKE '%{keyword}%' OR Field11__c LIKE '%{keyword}%'
+            LIMIT 10
+        """
+        results = sf.query(soql)['records']
+
+        suggestions = [
+            {
+                "id": rec["Id"],
+                "name": rec["Name"],
+                "login": rec.get("Field11__c", "")
+            }
+            for rec in results
+        ]
+        return jsonify(suggestions)
+
+    except Exception as e:
+        print("検索エラー:", e)
+        return jsonify([])
 
 
 if __name__ == '__main__':
