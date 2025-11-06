@@ -147,7 +147,7 @@ def get_field_descriptions():
     """
     desc = sf.restful('sobjects/Account/describe')
     import_fields = [
-        'Field206__c', 'Name', 'Field78__c', 'Field56__c', 'Field22__c',
+        'Field206__c', 'Name', 'Field78__c', 'Field56__c', 'Field228__c', 'Field22__c',
         'Field23__c', 'Field24__c', 'Field25__c', 'Field76__c', 'Field8__c',
         'Field207__c', 'ShippingPostalCode', 'ShippingState', 'ShippingCity', 'ShippingStreet',
         'Field6__c', 'Field9__c', 'Field40__c', 'X2__c', 'Field27__c', 'Field28__c',
@@ -219,7 +219,7 @@ def form():
 @login_required
 def submit():
     import_fields = [
-        'Field206__c', 'Name', 'Field78__c', 'Field56__c', 'Field22__c',
+        'Field206__c', 'Name', 'Field78__c', 'Field56__c', 'Field228__c', 'Field22__c',
         'Field23__c', 'Field24__c', 'Field25__c', 'Field76__c', 'Field8__c',
         'Field207__c', 'ShippingPostalCode', 'ShippingState', 'ShippingCity', 'ShippingStreet',
         'Field6__c', 'Field9__c', 'Field40__c', 'X2__c', 'Field27__c', 'Field28__c',
