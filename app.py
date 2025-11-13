@@ -652,3 +652,63 @@ def search_user():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+@app.route('/edit_record/<record_id>', methods=['GET'])
+def edit_record(record_id):
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    # Salesforceから該当レコード取得
+    query = f"SELECT Id, Name, Field24__c, Field25__c, Field101__c, CLOK__c FROM Account WHERE Id = '{record_id}'"
+    result = sf.query(query)
+    if not result['records']:
+        flash('該当する案件が見つかりません。', 'danger')
+        return redirect(url_for('records'))
+
+    record = result['records'][0]
+
+    # CLOK日がある案件は編集不可
+    if record.get('CLOK__c'):
+        flash('この案件はCLOK日が入力されているため編集できません。', 'warning')
+        return redirect(url_for('records'))
+
+    return render_template('edit_record.html', record=record)
+
+
+
+
+@app.route('/update_record', methods=['POST'])
+def update_record():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    record_id = request.form.get('record_id')
+    field24 = request.form.get('Field24__c') or None
+    field25 = request.form.get('Field25__c') or None
+    field101 = request.form.get('Field101__c') or None
+
+    # CLOK日が入っていたら編集禁止（二重送信対策）
+    check = sf.query(f"SELECT CLOK__c FROM Account WHERE Id = '{record_id}'")
+    if check['records'] and check['records'][0].get('CLOK__c'):
+        flash('この案件は既にCLOK日が入力されているため変更できません。', 'danger')
+        return redirect(url_for('records'))
+
+    try:
+        update_data = {}
+        if field24: update_data['Field24__c'] = field24
+        if field25: update_data['Field25__c'] = field25
+        if field101 == '前確待ち':  # 制限付き
+            update_data['Field101__c'] = field101
+
+        if update_data:
+            sf.Account.update(record_id, update_data)
+            flash('案件を更新しました。', 'success')
+        else:
+            flash('変更項目がありません。', 'info')
+
+    except Exception as e:
+        flash(f'更新エラー: {e}', 'danger')
+
+    return redirect(url_for('records'))
+
