@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>案件編集</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-5">
+  <h2 class="mb-4">案件編集</h2>
+
+  <form method="POST" action="{{ url_for('update_record') }}">
+    <input type="hidden" name="record_id" value="{{ record.Id }}">
+
+    <div class="mb-3">
+      <label class="form-label">取引先名</label>
+      <input type="text" class="form-control" value="{{ record.Name }}" readonly>
+    </div>
+
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        <label class="form-label">日付 (Field24__c)</label>
+        <input type="date" name="Field24__c" class="form-control" value="{{ record.Field24__c or '' }}">
+      </div>
+      <div class="col-md-4 mb-3">
+        <label class="form-label">時間 (Field25__c)</label>
+        <input type="time" name="Field25__c" class="form-control" value="{{ record.Field25__c or '' }}">
+      </div>
+      <div class="col-md-4 mb-3">
+        <label class="form-label">前確ステータス (Field101__c)</label>
+        <select name="Field101__c" class="form-select">
+          <option value="">変更なし</option>
+          <option value="前確待ち" {% if record.Field101__c == '前確待ち' %}selected{% endif %}>前確待ち</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <button type="submit" class="btn btn-primary me-2">保存</button>
+      <a href="{{ url_for('records') }}" class="btn btn-secondary">戻る</a>
+    </div>
+  </form>
+</div>
+</body>
+</html>
