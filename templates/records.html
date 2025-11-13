@@ -399,11 +399,11 @@
                         <td>{{ (record.Field171__c or '').replace('\n', '<br>') | safe }}</td>
                         <td>{{ (record.Field172__c or '').replace('\n', '<br>') | safe }}</td>
                         <td>
-                            {% if not record.CLOK__c %}
-                                <a href="{{ url_for('edit_record', record_id=record['Id']) }}" class="btn btn-sm btn-warning">編集</a>
-                            {% else %}
-                                <span class="text-muted">-</span>
-                            {% endif %}
+                          {% if not record.CLOK__c %}
+                            <a href="{{ url_for('edit_record', record_id=record['Id']) }}" class="btn btn-sm btn-warning">編集</a>
+                          {% else %}
+                            <span class="text-muted">-</span>
+                          {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
