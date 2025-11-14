@@ -675,7 +675,11 @@ def edit_record(record_id):
         return redirect(url_for('login'))
 
     # Salesforceから該当レコード取得
-    query = f"SELECT Id, Name, Field24__c, Field25__c, Field101__c, CLOK__c FROM Account WHERE Id = '{record_id}'"
+    query = f"""
+    SELECT Id, Name, Field24__c, Field25__c, Field101__c, Field8__c, CLOK__c
+    FROM Account
+    WHERE Id = '{record_id}'
+    """
     result = sf.query(query)
 
     if not result['records']:
@@ -702,9 +706,6 @@ def edit_record(record_id):
     )
 
 
-
-
-
 @app.route('/update_record', methods=['POST'])
 def update_record():
     if 'username' not in session:
@@ -714,6 +715,7 @@ def update_record():
     field24 = request.form.get('Field24__c') or None
     field25 = request.form.get('Field25__c') or None
     field101 = request.form.get('Field101__c') or None
+    field8 = request.form.get('Field8__c') or None
 
     # CLOK日が入っていたら編集禁止
     check = sf.query(f"SELECT CLOK__c FROM Account WHERE Id = '{record_id}'")
@@ -728,23 +730,20 @@ def update_record():
         if field24:
             update_data['Field24__c'] = field24
 
-        # ★ 時刻は +9時間して UTC として Salesforce に送る
+        # ★ 時刻は +9時間して UTC として Salesforce に送る（JST → UTC -9h）
         if field25:
-            # 文字列 → datetime
             t = datetime.strptime(field25, "%H:%M")
-
-            # 日付は今日で扱う（時間だけ使うため日付は捨てる）
             dt_jst = datetime(2024, 1, 1, t.hour, t.minute)
-
-            # UTC に変換（JST → UTC -9時間）
-            dt_utc = dt_jst - timedelta(hours=15)
-
-            # SalesforceのTime型フォーマット（HH:MM:SS）
+            dt_utc = dt_jst - timedelta(hours=9)
             update_data['Field25__c'] = dt_utc.strftime("%H:%M:%S")
 
         # 前確ステータス
         if field101 == '前確待ち':
             update_data['Field101__c'] = field101
+
+        # ★ 受注メモ（ロングテキスト）
+        if field8 is not None:
+            update_data['Field8__c'] = field8
 
         if update_data:
             sf.Account.update(record_id, update_data)
@@ -756,4 +755,3 @@ def update_record():
         flash(f'更新エラー: {e}', 'danger')
 
     return redirect(url_for('records'))
-
