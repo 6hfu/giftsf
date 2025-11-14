@@ -737,7 +737,7 @@ def update_record():
             dt_jst = datetime(2024, 1, 1, t.hour, t.minute)
 
             # UTC に変換（JST → UTC -9時間）
-            dt_utc = dt_jst - timedelta(hours=9)
+            dt_utc = dt_jst - timedelta(hours=3)
 
             # SalesforceのTime型フォーマット（HH:MM:SS）
             update_data['Field25__c'] = dt_utc.strftime("%H:%M:%S")
