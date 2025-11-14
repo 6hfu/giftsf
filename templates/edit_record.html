@@ -18,19 +18,38 @@
     </div>
 
     <div class="row">
+      <!-- 次回コール日 -->
       <div class="col-md-4 mb-3">
-        <label class="form-label">日付 (Field24__c)</label>
-        <input type="date" name="Field24__c" class="form-control" value="{{ record.Field24__c or '' }}">
+        <label class="form-label">次回コール日</label>
+        <input 
+          type="date" 
+          name="Field24__c" 
+          class="form-control"
+          value="{{ record.Field24__c or today_jst }}"
+        >
       </div>
+
+      <!-- 次回コール時間 -->
       <div class="col-md-4 mb-3">
-        <label class="form-label">時間 (Field25__c)</label>
-        <input type="time" name="Field25__c" class="form-control" value="{{ record.Field25__c or '' }}">
+        <label class="form-label">次回コール時間</label>
+        <input 
+          type="time" 
+          name="Field25__c" 
+          class="form-control"
+          value="{{ record.Field25__c or time_jst }}"
+        >
       </div>
+
+      <!-- 前確ステータス -->
       <div class="col-md-4 mb-3">
-        <label class="form-label">前確ステータス (Field101__c)</label>
+        <label class="form-label">前確ステータス</label>
         <select name="Field101__c" class="form-select">
           <option value="">変更なし</option>
-          <option value="前確待ち" {% if record.Field101__c == '前確待ち' %}selected{% endif %}>前確待ち</option>
+          <option value="前確待ち" 
+            {% if record.Field101__c == '前確待ち' %}selected{% endif %}
+          >
+            前確待ち
+          </option>
         </select>
       </div>
     </div>
