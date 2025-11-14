@@ -351,12 +351,23 @@ def records():
 
     try:
         soql = f"""
-            SELECT Name, Field106__c, timetorihiki__c, Field101__c, Field97__c, CLOK__c, Field118__c, Field171__c, Field172__c
+            SELECT 
+                Id, 
+                Name, 
+                Field106__c, 
+                timetorihiki__c, 
+                Field101__c, 
+                Field97__c, 
+                CLOK__c, 
+                Field118__c, 
+                Field171__c, 
+                Field172__c
             FROM Account
             WHERE Field207__c = '{login_id}'
             ORDER BY CreatedDate DESC
             LIMIT 500
         """
+
 
         result = sf.query(soql)
         records = result.get('records', [])
