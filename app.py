@@ -715,7 +715,7 @@ def update_record():
     field25 = request.form.get('Field25__c') or None
     field101 = request.form.get('Field101__c') or None
 
-    # CLOK日が入っていたら編集禁止（二重送信対策）
+    # CLOK日が入っていたら編集禁止
     check = sf.query(f"SELECT CLOK__c FROM Account WHERE Id = '{record_id}'")
     if check['records'] and check['records'][0].get('CLOK__c'):
         flash('この案件は既にCLOK日が入力されているため変更できません。', 'danger')
@@ -723,9 +723,27 @@ def update_record():
 
     try:
         update_data = {}
-        if field24: update_data['Field24__c'] = field24
-        if field25: update_data['Field25__c'] = field25
-        if field101 == '前確待ち':  # 制限付き
+
+        # 日付そのまま
+        if field24:
+            update_data['Field24__c'] = field24
+
+        # ★ 時刻は +9時間して UTC として Salesforce に送る
+        if field25:
+            # 文字列 → datetime
+            t = datetime.strptime(field25, "%H:%M")
+
+            # 日付は今日で扱う（時間だけ使うため日付は捨てる）
+            dt_jst = datetime(2024, 1, 1, t.hour, t.minute)
+
+            # UTC に変換（JST → UTC -9時間）
+            dt_utc = dt_jst - timedelta(hours=9)
+
+            # SalesforceのTime型フォーマット（HH:MM:SS）
+            update_data['Field25__c'] = dt_utc.strftime("%H:%M:%S")
+
+        # 前確ステータス
+        if field101 == '前確待ち':
             update_data['Field101__c'] = field101
 
         if update_data:
