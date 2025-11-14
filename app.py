@@ -665,6 +665,10 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 
+from datetime import datetime, timedelta, timezone
+
+JST = timezone(timedelta(hours=9))
+
 @app.route('/edit_record/<record_id>', methods=['GET'])
 def edit_record(record_id):
     if 'username' not in session:
@@ -673,6 +677,7 @@ def edit_record(record_id):
     # Salesforceから該当レコード取得
     query = f"SELECT Id, Name, Field24__c, Field25__c, Field101__c, CLOK__c FROM Account WHERE Id = '{record_id}'"
     result = sf.query(query)
+
     if not result['records']:
         flash('該当する案件が見つかりません。', 'danger')
         return redirect(url_for('records'))
@@ -684,7 +689,18 @@ def edit_record(record_id):
         flash('この案件はCLOK日が入力されているため編集できません。', 'warning')
         return redirect(url_for('records'))
 
-    return render_template('edit_record.html', record=record)
+    # ▼ JSTの現在日時（デフォルト用）
+    now_jst = datetime.now(JST)
+    today_jst = now_jst.strftime("%Y-%m-%d")
+    time_jst = now_jst.strftime("%H:%M")
+
+    return render_template(
+        'edit_record.html',
+        record=record,
+        today_jst=today_jst,
+        time_jst=time_jst
+    )
+
 
 
 
