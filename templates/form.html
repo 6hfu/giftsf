@@ -211,13 +211,14 @@
         {% for api_name in order %}
             {% set field = fields.get(api_name) %}
             {% if api_name == 'ShippingPostalCode' %}
+                <!-- 郵便番号～住所入力の部分はそのまま -->
                 <div class="mb-3">
                     <label for="ShippingPostalCode" class="form-label">郵便番号</label>
                     <input type="text" class="form-control" id="ShippingPostalCode" name="ShippingPostalCode"
                         placeholder="例: 1000001 または 100-0001"
                         pattern="^\d{7}$|^\d{3}-\d{4}$"
                         title="0000000 または 000-0000 の形式で入力してください" />
-                    <div id="zip-warning" class="mt-2"></div> <!-- エラーメッセージ表示用 -->
+                    <div id="zip-warning" class="mt-2"></div>
                 </div>
                 <div class="mb-3">
                     <label for="ShippingState" class="form-label">都道府県</label>
@@ -231,16 +232,13 @@
                     <label for="ShippingStreet" class="form-label">町名・番地</label>
                     <input type="text" class="form-control" id="ShippingStreet" name="ShippingStreet"  />
                 </div>
+        
             {% elif api_name == 'Field25__c' %}
+                <!-- 時間選択部分はそのまま -->
                 <div class="mb-3">
                     <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                         {{ field.label }}
-                        {% if api_name in required_fields %}
-
-
-                        {% endif %}
                     </label>
-
                     <div class="d-flex gap-2">
                         <select class="form-select" id="{{ api_name }}_hour" name="{{ api_name }}_hour" style="max-width: 100px;">
                             {% for h in range(0, 24) %}
@@ -256,16 +254,13 @@
                     </div>
                     <input type="hidden" id="{{ api_name }}" name="{{ api_name }}" />
                 </div>
+        
             {% elif api_name == 'Field76__c' %}
+                <!-- select2 部分はそのまま -->
                 <div class="mb-3">
                     <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                         {{ field.label }}
-                        {% if api_name in required_fields %}
-
-
-                        {% endif %}
                     </label>
-
                     <select class="form-select select2" id="{{ api_name }}" name="{{ api_name }}">
                         <option value="">選択してください</option>
                         {% for key in field76_map.keys() %}
@@ -273,74 +268,66 @@
                         {% endfor %}
                     </select>
                 </div>
-            {% elif field %}
-                {% if field.type == 'textarea' %}
+        
+            {% elif api_name == 'Field22__c' %}
+                <!-- Field22__c の入力制限対応 -->
                 <div class="mb-3">
                     <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                         {{ field.label }}
-                        {% if api_name in required_fields %}
-
-
-                        {% endif %}
+                        <small class="text-danger ms-1">※必須</small>
                     </label>
-
-
-                    {% if api_name == 'Field8__c' %}
-                    <div class="d-flex mb-2">
-                        <select class="template-selector form-select me-2" style="max-width: 250px;">
-                            <option value="">テンプレートを選択</option>
-                            {% for label, value in templates.items() %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="button" class="btn btn-outline-primary apply-template">反映</button>
-                    </div>
-                    {% endif %}
-
-                    {% if api_name == 'Field8__c' %}
-                    <textarea class="form-control" id="{{ api_name }}" name="{{ api_name }}" style="min-height: 400px;"></textarea>
-                    {% else %}
-                    <textarea class="form-control" id="{{ api_name }}" name="{{ api_name }}"></textarea>
-                    {% endif %}
-
+                    <input type="text" class="form-control" id="{{ api_name }}" name="{{ api_name }}"
+                           pattern="^[A-Za-z0-9]{8}$"
+                           title="8桁の英数字のみ入力してください" />
                 </div>
-
-            
+        
+            {% elif field %}
+                {% if field.type == 'textarea' %}
+                    <!-- 既存のテキストエリア処理そのまま -->
+                    <div class="mb-3">
+                        <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
+                            {{ field.label }}
+                            {% if api_name in required_fields %}
+                            {% endif %}
+                        </label>
+                        {% if api_name == 'Field8__c' %}
+                        <div class="d-flex mb-2">
+                            <select class="template-selector form-select me-2" style="max-width: 250px;">
+                                <option value="">テンプレートを選択</option>
+                                {% for label, value in templates.items() %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-outline-primary apply-template">反映</button>
+                        </div>
+                        <textarea class="form-control" id="{{ api_name }}" name="{{ api_name }}" style="min-height: 400px;"></textarea>
+                        {% else %}
+                        <textarea class="form-control" id="{{ api_name }}" name="{{ api_name }}"></textarea>
+                        {% endif %}
+                    </div>
+        
                 {% elif field.type == 'date' %}
                     <div class="mb-3">
                         <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                             {{ field.label }}
-                            {% if api_name in required_fields %}
-
-
-                            {% endif %}
                         </label>
-
                         <input type="date" class="form-control" id="{{ api_name }}" name="{{ api_name }}"
-                            {% if api_name == 'Field24__c' %}value="{{ today }}"{% endif %} />
+                               {% if api_name == 'Field24__c' %}value="{{ today }}"{% endif %} />
                     </div>
+        
                 {% elif field.type == 'datetime' %}
                     <div class="mb-3">
                         <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                             {{ field.label }}
-                            {% if api_name in required_fields %}
-
-
-                            {% endif %}
                         </label>
-
                         <input type="datetime-local" class="form-control" id="{{ api_name }}" name="{{ api_name }}" />
                     </div>
+        
                 {% elif field.picklistValues %}
                     <div class="mb-3">
                         <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                             {{ field.label }}
-                            {% if api_name in required_fields %}
-
-
-                            {% endif %}
                         </label>
-
                         <select class="form-select" id="{{ api_name }}" name="{{ api_name }}">
                             <option value="">選択してください</option>
                             {% for val in field.picklistValues %}
@@ -348,21 +335,19 @@
                             {% endfor %}
                         </select>
                     </div>
+        
                 {% else %}
                     <div class="mb-3">
                         <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                             {{ field.label }}
-                            {% if api_name in required_fields %}
-
-
-                            {% endif %}
                         </label>
-
                         <input type="text" class="form-control" id="{{ api_name }}" name="{{ api_name }}" />
                     </div>
+        
                 {% endif %}
             {% endif %}
         {% endfor %}
+
 
         <div class="text-center">
             <button type="submit" class="btn btn-primary">作成</button>
@@ -457,7 +442,7 @@ $(document).ready(function () {
     // ==========================
     $('form').on('submit', function (e) {
         let isValid = true;
-
+    
         // 既存エラー解除
         requiredFields.forEach(field => {
             if (field === 'Field25__c') {
@@ -468,7 +453,7 @@ $(document).ready(function () {
                 $('#' + field).removeClass('is-invalid');
             }
         });
-
+    
         // 入力チェック
         requiredFields.forEach(field => {
             let val = '';
@@ -491,14 +476,22 @@ $(document).ready(function () {
                     isValid = false;
                 }
             }
+    
+            // Field22__c の英数字8桁チェック
+            if (field === 'Field22__c' && val) {
+                if (!/^[A-Za-z0-9]{8}$/.test(val.trim())) {
+                    $('#' + field).addClass('is-invalid');
+                    isValid = false;
+                }
+            }
         });
-
+    
         if (!isValid) {
-            alert('未入力の必須項目があります。赤枠の項目を入力してください。');
+            alert('未入力の必須項目があります。また Field22__c は8桁の英数字のみ入力可能です。赤枠の項目を確認してください。');
             e.preventDefault();
             return false;
         }
-
+    
         // 送信ボタン制御
         const $btn = $(this).find('button[type="submit"]');
         $btn.prop('disabled', true).text('送信中...');
@@ -506,6 +499,7 @@ $(document).ready(function () {
             $btn.prop('disabled', false).text('送信');
         }, 10000);
     });
+
 
     // ==========================
     // 時間の初期値セットと連動処理
