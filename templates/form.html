@@ -477,13 +477,13 @@ $(document).ready(function () {
                 }
             }
     
-            // Field22__c の英数字8桁チェック
-            if (field === 'Field22__c' && val) {
-                if (!/^[A-Za-z0-9]{8}$/.test(val.trim())) {
-                    $('#' + field).addClass('is-invalid');
-                    isValid = false;
-                }
-            }
+        // Field22__c の英数字8桁チェック（現在無効化中）
+        // if (field === 'Field22__c' && val) {
+        //     if (!/^[A-Za-z0-9]{8}$/.test(val.trim())) {
+        //         $('#' + field).addClass('is-invalid');
+        //         isValid = false;
+        //     }
+        // }
         });
     
         if (!isValid) {
