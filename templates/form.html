@@ -270,16 +270,16 @@
                 </div>
         
             {% elif api_name == 'Field22__c' %}
-                <!-- Field22__c の入力制限対応 -->
+                <!-- Field22__c の入力制限を一時的にオフ -->
                 <div class="mb-3">
                     <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                         {{ field.label }}
-                        <small class="text-danger ms-1">半角英数</small>
+                        <!-- 小さい注意書きも非表示にする場合は削除 -->
+                        <!--<small class="text-danger ms-1">半角英数</small>-->
                     </label>
-                    <input type="text" class="form-control" id="{{ api_name }}" name="{{ api_name }}"
-                           pattern="^[A-Za-z0-9]{8}$"
-                           title="8桁の英数字のみ入力してください" />
+                    <input type="text" class="form-control" id="{{ api_name }}" name="{{ api_name }}" />
                 </div>
+
         
             {% elif field %}
                 {% if field.type == 'textarea' %}
