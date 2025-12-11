@@ -215,6 +215,50 @@ def form():
         return redirect(url_for('logout'))
 
 
+@app.route('/form2')
+@login_required
+def form2():
+    login_id = session.get('username')
+    if not login_id:
+        flash("ログインIDがセッションにありません")
+        return redirect(url_for('login'))
+    
+    try:
+        # Salesforceからユーザー名と部署名を取得
+        soql = f"SELECT Name, Field13__c FROM CustomObject10__c WHERE Field11__c = '{login_id}' LIMIT 1"
+        result = sf.query(soql)
+        if result['totalSize'] == 0:
+            flash("ユーザー情報が見つかりませんでした")
+            return redirect(url_for('logout'))
+        record = result['records'][0]
+        display_name = record.get('Name', '')
+        department = record.get('Field13__c', '')
+
+        # 既存の処理
+        fields = get_field_descriptions()
+        today = datetime.now(JST).date().isoformat()
+        postal_code = request.args.get('ShippingPostalCode', '')
+
+        # 郵便番号から住所を分割して取得
+        postal_code, state, city, street = get_address_from_postalcode(postal_code)
+
+        return render_template('form2.html',
+                               fields=fields,
+                               import_fields=list(fields.keys()),
+                               field76_map=field76_map,
+                               basic_auth_user_id=login_id,
+                               today=today,
+                               postal_code=postal_code,
+                               postal_state=state,
+                               postal_city=city,
+                               postal_street=street,
+                               username=display_name,
+                               department=department)
+    except Exception as e:
+        flash(f"Salesforceの取得中にエラーが発生しました: {str(e)}")
+        return redirect(url_for('logout'))
+
+
 @app.route('/submit', methods=['POST'])
 @login_required
 def submit():
