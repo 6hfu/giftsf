@@ -396,19 +396,39 @@ def menu_page():
     if not login_id:
         flash("ログインIDがセッションにありません")
         return redirect(url_for('login'))
+
     try:
-        soql = f"SELECT Name, Field13__c FROM CustomObject10__c WHERE Field11__c = '{login_id}' LIMIT 1"
+        # Field10__c（会社名）を追加
+        soql = (
+            "SELECT Name, Field13__c, Field10__c "
+            "FROM CustomObject10__c "
+            f"WHERE Field11__c = '{login_id}' "
+            "LIMIT 1"
+        )
+
         result = sf.query(soql)
+
         if result['totalSize'] == 0:
             flash("ユーザー情報が見つかりませんでした")
             return redirect(url_for('logout'))
+
         record = result['records'][0]
+
         display_name = record.get('Name', '')
         department = record.get('Field13__c', '')
-        return render_template('menu.html', username=display_name, department=department)
+        company_name = record.get('Field10__c', '')  # ← 新規追加
+
+        return render_template(
+            'menu.html',
+            username=display_name,
+            department=department,
+            company_name=company_name  # ← menu.html へ渡す
+        )
+
     except Exception as e:
         flash(f"Salesforceの取得中にエラーが発生しました: {str(e)}")
         return redirect(url_for('logout'))
+
 
 @app.route('/dashboard')
 @login_required
