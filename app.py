@@ -794,10 +794,12 @@ def update_record():
         if field24:
             update_data['Field24__c'] = field24
         
-        # 時刻はそのまま送る（Time 型なので JST のままでOK）
+        # Time 型の場合、Salesforce に送る値は UTC として解釈されるので
+        # JST 14:00 をそのまま表示させるには UTC 14:00 として送る
         if field25:
             t = datetime.strptime(field25, "%H:%M")
             update_data['Field25__c'] = t.strftime("%H:%M:%S")
+
 
 
         # 前確ステータス
