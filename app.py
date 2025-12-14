@@ -789,17 +789,16 @@ def update_record():
 
     try:
         update_data = {}
-
+        
         # 日付そのまま
         if field24:
             update_data['Field24__c'] = field24
-
-        # ★ 時刻は +9時間して UTC として Salesforce に送る（JST → UTC -9h）
+        
+        # 時刻はそのまま送る（Time 型なので JST のままでOK）
         if field25:
             t = datetime.strptime(field25, "%H:%M")
-            dt_jst = datetime(2024, 1, 1, t.hour, t.minute)
-            dt_utc = dt_jst - timedelta(hours=9)
-            update_data['Field25__c'] = dt_utc.strftime("%H:%M:%S")
+            update_data['Field25__c'] = t.strftime("%H:%M:%S")
+
 
         # 前確ステータス
         if field101 == '前確待ち':
