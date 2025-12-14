@@ -798,8 +798,9 @@ def update_record():
         if field25:
             t = datetime.strptime(field25, "%H:%M")
             dt_jst = datetime(2024, 1, 1, t.hour, t.minute)
-            dt_utc = dt_jst - timedelta(hours=19h)  # JST → UTC
+            dt_utc = dt_jst - timedelta(hours=19)  # JST → UTC
             update_data['Field25__c'] = dt_utc.strftime("%H:%M:%S")
+
 
 
 
