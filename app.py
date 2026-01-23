@@ -192,6 +192,15 @@ def get_schedule_records():
 
     return records
 
+def status_color(status):
+    return {
+        "成約": "#4CAF50",      # 緑：完了・成功
+        "NG": "#9E9E9E",        # グレー：終了（不成立）
+        "留守": "#FFC107",      # 黄：一時的
+        "リスケ": "#FF9800",    # オレンジ：要再調整
+        "返答待ち": "#03A9F4",  # 水色：相手待ち
+        "商談待ち": "#2196F3",  # 青：これから
+    }.get(status, "#BDBDBD")   # 未定義ステータス
 
 
 
