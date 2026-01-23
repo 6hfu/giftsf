@@ -13,7 +13,6 @@
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 
     <style>
-        /* カレンダー全体を少しモダンに */
         #calendar {
             background-color: #fff;
             border-radius: 12px;
@@ -21,7 +20,6 @@
             padding: 10px;
         }
 
-        /* イベントの文字を見やすく */
         .fc-event {
             color: #fff;
             font-weight: 600;
@@ -30,10 +28,10 @@
             font-size: 0.85rem;
         }
 
-        /* ツールチップ風のスタイル */
-        .fc-event:hover {
-            opacity: 0.9;
-            cursor: default;
+        .fc-more-link {
+            color: #555 !important;
+            font-weight: bold;
+            font-size: 0.85rem;
         }
     </style>
 </head>
@@ -48,20 +46,41 @@
 document.addEventListener('DOMContentLoaded', function () {
     const calendarEl = document.getElementById('calendar');
 
-    // 同じ時間に複数イベントがある場合の色配列
     const overlappingColors = ["#2196F3", "#FFC107", "#F44336"]; // 青、黄、赤
 
-    // イベントをコピーして色を上書き
+    // イベントデータ
     const rawEvents = {{ events | tojson }};
-    const eventCountByTime = {};
 
+    // 同じ時間のイベント件数を計算
+    const eventsByTime = {};
     rawEvents.forEach(e => {
-        const timeKey = e.start;  // 同じ時間でグループ化
-        eventCountByTime[timeKey] = (eventCountByTime[timeKey] || 0) + 1;
-        const index = (eventCountByTime[timeKey] - 1) % overlappingColors.length;
-        e.backgroundColor = overlappingColors[index];
-        e.borderColor = overlappingColors[index];
-        e.textColor = "#fff";
+        const key = e.start;
+        if (!eventsByTime[key]) eventsByTime[key] = [];
+        eventsByTime[key].push(e);
+    });
+
+    // 色分けと「＋件」の処理
+    const processedEvents = [];
+    Object.values(eventsByTime).forEach(eventGroup => {
+        eventGroup.forEach((e, idx) => {
+            if (idx < 2) { // 1件目と2件目は通常表示
+                e.backgroundColor = overlappingColors[idx];
+                e.borderColor = overlappingColors[idx];
+                e.textColor = "#fff";
+                processedEvents.push(e);
+            } else if (idx === 2) { // 3件目以降はまとめて「＋N件」
+                const extraCount = eventGroup.length - 2;
+                processedEvents.push({
+                    title: `＋${extraCount}件`,
+                    start: e.start,
+                    allDay: false,
+                    backgroundColor: "#9E9E9E",
+                    borderColor: "#9E9E9E",
+                    textColor: "#fff",
+                    extendedProps: { isExtra: true }
+                });
+            }
+        });
     });
 
     const calendar = new FullCalendar.Calendar(calendarEl, {
@@ -75,16 +94,21 @@ document.addEventListener('DOMContentLoaded', function () {
             right: 'dayGridMonth,timeGridWeek,timeGridDay'
         },
 
-        events: rawEvents,
-        eventDisplay: 'block',  // ブロック表示で視認性UP
+        events: processedEvents,
+        eventDisplay: 'block',
         eventContent: function(arg) {
-            // タイトルと時間を表示
+            if (arg.event.extendedProps.isExtra) {
+                return { html: `<div>${arg.event.title}</div>` };
+            }
             return {
                 html: `<div>${arg.event.title}<br><small>${arg.event.start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small></div>`
             };
         },
 
-        // eventClick削除（受注登録不要）
+        dateClick: function(info) {
+            // 日付クリックでDAY表示に切り替え
+            calendar.changeView('timeGridDay', info.dateStr);
+        }
     });
 
     calendar.render();
