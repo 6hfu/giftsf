@@ -173,9 +173,9 @@ def get_schedule_records():
             Name,
             Field334__c,
             Field97__c
-        FROM Opportunity
+        FROM Account
         WHERE
-            Field76__c = 'a05TL0000117wNyYAI'
+            Field76__r.Id = 'a05TL0000117wNyYAI'
             AND Field97__c != null
     """
 
@@ -191,6 +191,8 @@ def get_schedule_records():
         })
 
     return records
+
+
 
 
 
