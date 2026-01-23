@@ -11,56 +11,75 @@
     <!-- Bootstrap -->
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
-        /* --- 月表示日付デザイン --- */
+        body {
+            font-family: 'Roboto', sans-serif;
+        }
+
+        /* --- ヘッダー --- */
+        .fc-header-toolbar {
+            margin-bottom: 10px;
+        }
+        .fc-toolbar-title {
+            font-weight: 500;
+            font-size: 1.3rem;
+        }
+
+        /* --- 曜日ヘッダー --- */
+        .fc-col-header-cell {
+            background-color: #f1f3f4;
+            color: #202124;
+            font-weight: 500;
+        }
+
+        /* --- 月ビュー日付 --- */
         .fc-daygrid-day-number {
-            background-color: #f8f9fa;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
+            color: #202124;
+            font-weight: 500;
         }
         .fc-daygrid-day {
             position: relative;
+            background-color: #fff;
+        }
+        .fc-daygrid-day:hover {
+            background-color: #e8f0fe;
+            cursor: pointer;
         }
 
-        /* --- バッジ表示 --- */
+        /* --- バッジ --- */
         .status-badge {
             display: inline-block;
-            padding: 2px 6px;
-            font-size: 0.7rem;
-            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            border-radius: 50%;
             color: white;
-            margin-right: 2px;
-            margin-top: 2px;
+            font-weight: bold;
+            position: absolute;
+            top: 4px;
+            right: 4px;
         }
 
-        /* --- 日表示カード --- */
-        .fc-event {
+        /* --- イベント --- */
+        .fc-event, .fc-timegrid-event {
             border: none;
             border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.15);
             padding: 4px 6px;
             font-size: 0.85rem;
             color: white;
-            margin-bottom: 2px;
         }
 
-        /* --- 週表示カード --- */
-        .fc-timegrid-event {
-            border-radius: 6px;
-            padding: 2px 4px;
-            font-size: 0.8rem;
-            color: white;
+        /* --- 日ビュー・週ビュー時間ラベル --- */
+        .fc-timegrid-slot-label {
+            font-size: 0.75rem;
+            color: #5f6368;
         }
 
-        /* 月・週のクリックでday表示 */
-        .fc-daygrid-day:hover {
-            cursor: pointer;
-            background-color: #e9ecef;
+        /* --- Now line --- */
+        .fc-now-indicator {
+            background-color: #d93025 !important;
         }
     </style>
 </head>
@@ -75,17 +94,15 @@
 document.addEventListener('DOMContentLoaded', function () {
     const calendarEl = document.getElementById('calendar');
 
-    // ステータス色
     const statusColors = {
-        "成約": "#4CAF50",
+        "成約": "#34A853",
         "NG": "#9E9E9E",
-        "留守": "#FFC107",
-        "リスケ": "#FF9800",
-        "返答待ち": "#03A9F4",
-        "商談待ち": "#2196F3"
+        "留守": "#FBBC05",
+        "リスケ": "#F57C00",
+        "返答待ち": "#4285F4",
+        "商談待ち": "#1A73E8"
     };
 
-    // カレンダー作成
     const calendar = new FullCalendar.Calendar(calendarEl, {
         locale: 'ja',
         initialView: 'dayGridMonth',
@@ -95,49 +112,47 @@ document.addEventListener('DOMContentLoaded', function () {
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay'
         },
-
         events: {{ events | tojson }},
-
-        // 月ビュー：件数バッジ化
         eventContent: function(arg) {
+            const status = arg.event.extendedProps.status || '未定';
+            const color = statusColors[status] || '#BDBDBD';
+
             if (arg.view.type === 'dayGridMonth') {
-                // 同じ日付のイベント件数をまとめる
                 const count = arg.event.extendedProps.count || 1;
-                const status = arg.event.extendedProps.status || '未定';
-                const color = statusColors[status] || '#BDBDBD';
-                return { html: `<span class="status-badge" style="background-color:${color}">${count}</span>` };
+                const titles = arg.event.extendedProps.titles || arg.event.title || '';
+                return { 
+                    html: `<span class="status-badge" style="background-color:${color}" data-bs-toggle="tooltip" title="${titles}">${count}</span>` 
+                };
             } else if (arg.view.type === 'timeGridWeek') {
-                // 週ビュー：取引先名＋ステータス
-                const status = arg.event.extendedProps.status || '未定';
-                const color = statusColors[status] || '#BDBDBD';
-                return { html: `<div style="background-color:${color}; padding:2px 4px; border-radius:4px;">${arg.event.title} (${status})</div>` };
+                return { html: `<div style="background-color:${color}; padding:2px 4px; border-radius:6px;">${arg.event.title} (${status})</div>` };
             } else if (arg.view.type === 'timeGridDay') {
-                // 日ビュー：カード型
-                const status = arg.event.extendedProps.status || '未定';
-                const color = statusColors[status] || '#BDBDBD';
                 return { html: `<div class="fc-event" style="background-color:${color}">${arg.event.title}<br>${status}</div>` };
             }
         },
 
-        // 月・週のクリックで日表示に遷移
         dateClick: function(info) {
             calendar.changeView('timeGridDay', info.dateStr);
         },
 
-        // 同じ時間帯のイベントを色分け（週ビュー用）
         eventDidMount: function(info) {
+            // 週・日ビューの同時間イベント色分け
             if (info.view.type === 'timeGridWeek' || info.view.type === 'timeGridDay') {
                 const eventsAtSameTime = calendar.getEvents().filter(ev =>
                     ev.startStr === info.event.startStr && ev !== info.event
                 );
-                const order = eventsAtSameTime.length; // 0,1,2…
-                const colors = ['#2196F3', '#FFC107', '#F44336'];
+                const order = eventsAtSameTime.length;
+                const colors = ['#1A73E8', '#FBBC05', '#EA4335'];
                 if (order < 3) {
                     info.el.style.backgroundColor = colors[order];
                 } else {
                     info.el.innerHTML = `+${order + 1}件`;
                     info.el.style.backgroundColor = '#9E9E9E';
                 }
+            }
+
+            // ツールチップ有効化
+            if (info.el.querySelector('[data-bs-toggle="tooltip"]')) {
+                new bootstrap.Tooltip(info.el.querySelector('[data-bs-toggle="tooltip"]'));
             }
         },
 
