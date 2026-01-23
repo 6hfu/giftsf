@@ -166,6 +166,34 @@ def get_field_descriptions():
             }
     return field_defs
 
+def get_schedule_records():
+    soql = """
+        SELECT
+            Id,
+            Name,
+            Field334__c,
+            Field97__c
+        FROM Opportunity
+        WHERE
+            Field76__c = 'a05TL0000117wNyYAI'
+            AND Field97__c != null
+    """
+
+    result = sf.query_all(soql)
+
+    records = []
+    for r in result["records"]:
+        records.append({
+            "id": r["Id"],
+            "account": r["Name"],
+            "status": r.get("Field334__c"),
+            "next_call": r.get("Field97__c")
+        })
+
+    return records
+
+
+
 @app.route('/')
 @login_required
 def index():
@@ -953,3 +981,26 @@ def update_record():
         flash(f'更新エラー: {e}', 'danger')
 
     return redirect(url_for('records'))
+
+
+
+
+@app.route("/schedule")
+@login_required
+def schedule():
+    records = get_schedule_records()
+
+    events = []
+    for r in records:
+        events.append({
+            "title": f"{r['account']}",
+            "start": r["next_call"],   # Salesforce DateTime → ISO形式
+            "color": status_color(r["status"]),
+            "record_id": r["id"]
+        })
+
+    return render_template(
+        "schedule.html",
+        events=events
+    )
+
