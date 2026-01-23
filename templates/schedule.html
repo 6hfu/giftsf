@@ -1,58 +1,35 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <title>商談スケジュール</title>
+<meta charset="UTF-8">
+<title>商談スケジュール</title>
 
-    <!-- FullCalendar -->
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/resource-timegrid@6.1.11/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/resource-common@6.1.11/index.global.min.js"></script>
+<!-- FullCalendar -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/resource-timegrid@6.1.11/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/resource-common@6.1.11/index.global.min.js"></script>
 
-    <!-- Bootstrap -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Bootstrap -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <style>
-        body { font-family: 'Roboto', sans-serif; }
-        .fc-header-toolbar { margin-bottom: 10px; }
-        .fc-toolbar-title { font-weight: 500; font-size: 1.3rem; }
-        .fc-col-header-cell { background-color: #f1f3f4; color: #202124; font-weight: 500; }
-        .fc-daygrid-day { position: relative; background-color: #fff; }
-        .fc-daygrid-day:hover { background-color: #e8f0fe; cursor: pointer; }
+<style>
+body { font-family: 'Roboto', sans-serif; }
+.fc-header-toolbar { margin-bottom: 10px; }
+.fc-toolbar-title { font-weight: 500; font-size: 1.3rem; }
+.fc-col-header-cell { background-color: #f1f3f4; color: #202124; font-weight: 500; }
+.fc-daygrid-day { position: relative; background-color: #fff; }
+.fc-daygrid-day:hover { background-color: #e8f0fe; cursor: pointer; }
 
-        /* バッジ風ステータスリスト（月ビュー） */
-        .status-list {
-            font-size: 0.75rem;
-            margin: 2px 0 0 0;
-            padding: 0;
-            list-style: none;
-        }
-        .status-list li {
-            color: white;
-            padding: 2px 4px;
-            margin-bottom: 1px;
-            border-radius: 4px;
-            display: inline-block;
-        }
+.status-list { font-size: 0.75rem; margin: 2px 0 0 0; padding: 0; list-style: none; }
+.status-list li { color: white; padding: 2px 4px; margin-bottom: 1px; border-radius: 4px; display: inline-block; }
 
-        /* イベントカード */
-        .fc-event, .fc-timegrid-event {
-            border: none;
-            border-radius: 6px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-            padding: 4px 6px;
-            font-size: 0.85rem;
-            color: white;
-        }
+.fc-event, .fc-timegrid-event { border: none; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.15); padding: 4px 6px; font-size: 0.85rem; color: white; }
 
-        /* 日ビューのリソースヘッダー */
-        .fc-col-header-cell-cushion { font-size: 0.85rem; }
-
-        /* Now line */
-        .fc-now-indicator { background-color: #d93025 !important; }
-    </style>
+.fc-col-header-cell-cushion { font-size: 0.85rem; }
+.fc-now-indicator { background-color: #d93025 !important; }
+</style>
 </head>
 <body class="bg-light">
 
@@ -65,31 +42,8 @@
 document.addEventListener('DOMContentLoaded', function () {
     const calendarEl = document.getElementById('calendar');
 
-    // ステータス色
-    const statusColors = {
-        "成約": "#34A853",
-        "NG": "#9E9E9E",
-        "留守": "#FBBC05",
-        "リスケ": "#F57C00",
-        "返答待ち": "#4285F4",
-        "商談待ち": "#1A73E8"
-    };
-
-    // サンプルイベント（実際は {{ events | tojson }} で渡す）
-    const events = [
-        { title: "商談A", start: "2026-01-23T09:00:00", status: "商談待ち", resourceId: "A" },
-        { title: "商談B", start: "2026-01-23T10:00:00", status: "返答待ち", resourceId: "B" },
-        { title: "商談C", start: "2026-01-23T11:00:00", status: "留守", resourceId: "C" },
-        { title: "商談D", start: "2026-01-24T09:00:00", status: "商談待ち", resourceId: "D" }
-    ];
-
-    // 日ビュー用リソース（商談名）
-    const resources = [
-        { id: "A", title: "商談A" },
-        { id: "B", title: "商談B" },
-        { id: "C", title: "商談C" },
-        { id: "D", title: "商談D" }
-    ];
+    // Flask から渡された events をそのまま使用
+    const events = {{ events|tojson }};
 
     const calendar = new FullCalendar.Calendar(calendarEl, {
         locale: 'ja',
@@ -101,47 +55,48 @@ document.addEventListener('DOMContentLoaded', function () {
             right: 'dayGridMonth,timeGridWeek,resourceTimeGridDay'
         },
         events: events,
-        resources: resources,
 
-        eventContent: function(arg) {
-            const status = arg.event.extendedProps.status || '未定';
-            const color = statusColors[status] || '#BDBDBD';
+        eventContent: function(arg){
+            const status = arg.event.title;  // 月ビューでは status は色で判断済み
+            const color = arg.event.backgroundColor || arg.event.color || '#BDBDBD';
 
-            // 月ビュー：日ごとにステータス件数のみ
-            if (arg.view.type === 'dayGridMonth') {
+            // 月ビュー：日ごとにステータス別件数のみ
+            if(arg.view.type === 'dayGridMonth'){
                 const dateStr = arg.event.startStr.split('T')[0];
-                // 同日イベントを集計
                 const dayEvents = calendar.getEvents().filter(ev => ev.startStr.split('T')[0] === dateStr);
 
-                // すでに集計済みなら空にして重複防止
-                if (arg.event._rendered) return { html: '' };
+                // 重複防止
+                if(arg.event._rendered) return { html: '' };
                 dayEvents.forEach(ev => ev._rendered = true);
 
+                // ステータス別件数集計
                 const counts = {};
                 dayEvents.forEach(ev => {
-                    const s = ev.extendedProps.status || '未定';
-                    counts[s] = (counts[s] || 0) + 1;
+                    const s = ev.title;  // account名を使う場合は status を extendedProps に渡す必要あり
+                    const c = ev.extendedProps.status || '未定';
+                    counts[c] = (counts[c] || 0) + 1;
                 });
 
                 let html = '<ul class="status-list">';
-                for (let s in counts) {
-                    html += `<li style="background-color:${statusColors[s]||'#BDBDBD'}">${s}: ${counts[s]}件</li>`;
+                for(let s in counts){
+                    html += `<li style="background-color:${status_color_js(s)}">${s}: ${counts[s]}件</li>`;
                 }
                 html += '</ul>';
                 return { html: html };
-
             } 
             // 週ビュー：イベントタイトル＋ステータス
-            else if (arg.view.type === 'timeGridWeek') {
-                return { html: `<div style="background-color:${color}; padding:2px 4px; border-radius:6px;">${arg.event.title} (${status})</div>` };
-            } 
-            // 日ビュー（リソース別）：ステータスのみ
-            else if (arg.view.type === 'resourceTimeGridDay') {
-                return { html: `<div style="background-color:${color}; padding:2px 4px; border-radius:6px;">${status}</div>` };
+            else if(arg.view.type === 'timeGridWeek'){
+                const statusText = arg.event.extendedProps.status || '未定';
+                return { html: `<div style="background-color:${color}; padding:2px 4px; border-radius:6px;">${arg.event.title} (${statusText})</div>` };
+            }
+            // 日ビュー（リソース別）
+            else if(arg.view.type === 'resourceTimeGridDay'){
+                const statusText = arg.event.extendedProps.status || '未定';
+                return { html: `<div style="background-color:${color}; padding:2px 4px; border-radius:6px;">${statusText}</div>` };
             }
         },
 
-        dateClick: function(info) {
+        dateClick: function(info){
             calendar.changeView('resourceTimeGridDay', info.dateStr);
         },
 
@@ -152,6 +107,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     calendar.render();
+
+    // JS 用 status_color
+    function status_color_js(status){
+        const colors = {
+            "成約": "#4CAF50",
+            "NG": "#9E9E9E",
+            "留守": "#FFC107",
+            "リスケ": "#FF9800",
+            "返答待ち": "#03A9F4",
+            "商談待ち": "#2196F3"
+        };
+        return colors[status] || "#BDBDBD";
+    }
 });
 </script>
 
