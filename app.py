@@ -166,21 +166,25 @@ def get_field_descriptions():
             }
     return field_defs
 
+def status_color(status):
+    return {
+        "成約": "#4CAF50",
+        "NG": "#9E9E9E",
+        "留守": "#FFC107",
+        "リスケ": "#FF9800",
+        "返答待ち": "#03A9F4",
+        "商談待ち": "#2196F3",
+    }.get(status, "#BDBDBD")
+
+# Salesforce 取得関数
 def get_schedule_records():
     soql = """
-        SELECT
-            Id,
-            Name,
-            Field334__c,
-            Field97__c
+        SELECT Id, Name, Field334__c, Field97__c
         FROM Account
-        WHERE
-            Field76__r.Id = 'a05TL0000117wNyYAI'
-            AND Field97__c != null
+        WHERE Field76__r.Id = 'a05TL0000117wNyYAI'
+          AND Field97__c != null
     """
-
     result = sf.query_all(soql)
-
     records = []
     for r in result["records"]:
         records.append({
@@ -189,20 +193,7 @@ def get_schedule_records():
             "status": r.get("Field334__c"),
             "next_call": r.get("Field97__c")
         })
-
     return records
-
-def status_color(status):
-    return {
-        "成約": "#4CAF50",      # 緑：完了・成功
-        "NG": "#9E9E9E",        # グレー：終了（不成立）
-        "留守": "#FFC107",      # 黄：一時的
-        "リスケ": "#FF9800",    # オレンジ：要再調整
-        "返答待ち": "#03A9F4",  # 水色：相手待ち
-        "商談待ち": "#2196F3",  # 青：これから
-    }.get(status, "#BDBDBD")   # 未定義ステータス
-
-
 
 
 @app.route('/')
@@ -1000,18 +991,13 @@ def update_record():
 @login_required
 def schedule():
     records = get_schedule_records()
-
     events = []
     for r in records:
         events.append({
-            "title": f"{r['account']}",
-            "start": r["next_call"],   # Salesforce DateTime → ISO形式
+            "title": r['account'],
+            "start": r["next_call"],
             "color": status_color(r["status"]),
             "record_id": r["id"]
         })
-
-    return render_template(
-        "schedule.html",
-        events=events
-    )
+    return render_template("schedule.html", events=events)
 
