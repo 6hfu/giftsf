@@ -12,6 +12,15 @@
 body {
     background: #f5f7fa;
     font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+/* ヘッダ右上ボタン */
+.fc-header-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 /* 土日背景 */
@@ -41,15 +50,43 @@ body {
     font-weight: 600;
     box-sizing: border-box;
 }
+
+/* 月/週/日ボタン */
+.view-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.view-buttons button {
+    background: #2196F3;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+}
+
+.view-buttons button:hover {
+    background: #1976d2;
+}
 </style>
 </head>
 <body>
+
+<div class="view-buttons">
+    <button onclick="goMonth()">月</button>
+    <button onclick="goWeek()">週</button>
+    <button onclick="goDay()">日</button>
+</div>
 
 <div id="calendar"></div>
 
 <script>
 // ===== サーバーからのイベント =====
 const RAW_EVENTS = {{ events | tojson }};
+
+// ===== 基準日（Flaskから渡された base_date） =====
+const BASE_DATE = "{{ base_date }}"; // YYYY-MM-DD
 
 // ===== 月ビュー用ユーティリティ =====
 const getDateStr = d => {
@@ -61,17 +98,16 @@ const getDateStr = d => {
 function renderMonthSummary(info){
     if(info.view.type !== "dayGridMonth") return;
 
-    const dateStr = info.date.toISOString().split("T")[0];
-
-    // 対象日のイベントを抽出
-    const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
+    const dateStr = getDateStr(info.date);
 
     const STATUSES = ["商談待ち","返答待ち","リスケ","留守"];
     const countMap = {};
     STATUSES.forEach(s => countMap[s] = 0);
 
-    dayEvents.forEach(e => {
-        if(countMap[e.status] !== undefined) countMap[e.status]++;
+    RAW_EVENTS.forEach(e => {
+        if(getDateStr(e.start) === dateStr && countMap[e.status] !== undefined){
+            countMap[e.status]++;
+        }
     });
 
     const wrap = document.createElement("div");
@@ -101,12 +137,13 @@ function renderMonthSummary(info){
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
     locale: "ja",
     initialView: "dayGridMonth",
+    initialDate: BASE_DATE,
     height: "auto",
 
     headerToolbar: {
         left: "prev,next today",
         center: "title",
-        right: "dayGridMonth"
+        right: ""
     },
 
     buttonText: {
@@ -116,10 +153,27 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
 
     dayCellDidMount: renderMonthSummary,
 
-    dateClick: info => alert("日付をクリックしました: " + info.dateStr)
+    // 日付クリック → 週ページに遷移
+    dateClick: info => {
+        const dateStr = info.dateStr;
+        window.location.href = `/schedule/week?date=${dateStr}`;
+    }
 });
 
+// 月カレンダー描画
 calendar.render();
+
+// ===== 月/週/日ボタン =====
+function goMonth(){
+    // 現在の基準日で月ページ
+    window.location.href = `/schedule/month?date=${BASE_DATE}`;
+}
+function goWeek(){
+    window.location.href = `/schedule/week?date=${BASE_DATE}`;
+}
+function goDay(){
+    window.location.href = `/schedule/day?date=${BASE_DATE}`;
+}
 </script>
 
 </body>
