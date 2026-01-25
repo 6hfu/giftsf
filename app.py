@@ -198,15 +198,23 @@ def get_schedule_records():
 
 
 def round_time_30min(dt):
+    # strならdatetimeに変換
+    if isinstance(dt, str):
+        try:
+            dt = datetime.fromisoformat(dt.replace("Z", ""))
+        except ValueError:
+            dt = datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
+
     minute = dt.minute
     if minute < 15:
-        return dt.replace(minute=0, second=0, microsecond=0)
+        minute = 0
     elif minute < 45:
-        return dt.replace(minute=30, second=0, microsecond=0)
+        minute = 30
     else:
-        return (dt + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+        dt = dt.replace(hour=dt.hour + 1)
+        minute = 0
 
-
+    return dt.replace(minute=minute, second=0, microsecond=0)
 
 @app.route('/')
 @login_required
