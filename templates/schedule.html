@@ -8,14 +8,43 @@
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
-<!-- お好みでスタイル -->
 <style>
-.summary { font-size: 12px; margin: 2px 0; }
-.slot-label { font-size: 12px; margin: 1px 0; }
-.summaryDone { color: green; }
-.summaryPending { color: orange; }
-.slot-labelDone { background: #cfc; padding: 2px 4px; border-radius: 3px; }
-.slot-labelPending { background: #fcc; padding: 2px 4px; border-radius: 3px; }
+/* --- 月ビューステータス --- */
+.month-summary {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-top: 2px;
+}
+.summaryBox {
+    width: 23%;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    border-radius: 4px;
+    color: #fff;
+    font-weight: bold;
+}
+.summaryDone { background-color: #4caf50; }     /* 完了 */
+.summaryPending { background-color: #ff9800; }  /* 保留 */
+.summaryInProgress { background-color: #2196f3; } /* 進行中 */
+.summaryCancelled { background-color: #f44336; } /* キャンセル */
+
+/* --- 日・週ビュー枠調整 --- */
+.fc-timegrid-slot {
+    height: 50px; /* 各時間枠を縦に大きく */
+}
+.slot-label {
+    font-size: 12px;
+    margin: 2px 0;
+    padding: 2px 4px;
+    border-radius: 3px;
+    color: #fff;
+}
+.slot-labelDone { background: #4caf50; }
+.slot-labelPending { background: #ff9800; }
+.slot-labelInProgress { background: #2196f3; }
+.slot-labelCancelled { background: #f44336; }
 </style>
 </head>
 <body>
@@ -23,44 +52,39 @@
 <div id="calendar"></div>
 
 <script>
-// サーバーから渡されるイベント配列（Flask等から）
+// サーバーから渡されるイベント配列
 const RAW_EVENTS_ORIG = {{ events | tojson }};
 
-// ----------------- マイナス12時間補正 -----------------
+// ----------------- マイナス6時間補正 -----------------
 const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
     const dt = new Date(e.start);
-    dt.setHours(dt.getHours() - 6); // ←強制マイナス12時間
-    return { ...e, start: dt }; // Dateオブジェクトのまま保持
+    dt.setHours(dt.getHours() - 6); // ←6時間補正
+    return { ...e, start: dt };
 });
 
-// 日付/時間文字列取得用関数
-function getDateStr(dt){ 
-    const d = new Date(dt);
-    return d.toISOString().split("T")[0]; 
-}
-function getHourStr(dt){ 
-    const d = new Date(dt);
-    return d.toISOString().split("T")[1].split(":")[0]; 
-}
+// 日付/時間取得
+function getDateStr(dt){ return new Date(dt).toISOString().split("T")[0]; }
+function getHourStr(dt){ return new Date(dt).toISOString().split("T")[1].split(":")[0]; }
 
 // ----------------- 月ビューサマリ -----------------
 function renderMonthSummary(calendar, info){
     if(calendar.view.type !== "dayGridMonth") return;
-
     const dateStr = info.date.toISOString().split("T")[0];
     const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
-    if(dayEvents.length === 0) return;
 
+    const statuses = ["Done","Pending","InProgress","Cancelled"]; // 4ステータス固定
     const grouped = {};
+    statuses.forEach(s => grouped[s] = 0);
     dayEvents.forEach(e => { if(e.status) grouped[e.status] = (grouped[e.status]||0)+1; });
 
     const wrap = document.createElement("div");
-    for(const status of Object.keys(grouped)){
+    wrap.className = "month-summary";
+    statuses.forEach(s => {
         const div = document.createElement("div");
-        div.className = "summary summary"+status.replace(/\s/g,"");
-        div.textContent = status + " " + grouped[status] + "件";
+        div.className = "summaryBox summary"+s;
+        div.textContent = s + " " + grouped[s];
         wrap.appendChild(div);
-    }
+    });
 
     const target = info.el.querySelector(".fc-daygrid-day-frame") || info.el.querySelector(".fc-daygrid-day-events");
     target?.appendChild(wrap);
@@ -68,25 +92,31 @@ function renderMonthSummary(calendar, info){
 
 // ----------------- 日・週ビュー縦5枠 -----------------
 function renderDayWeekSlots(info){
-    if(!["timeGridDay","timeGridWeek"].includes(info.view.type)) return;
+    const viewType = info.view.type;
+    if(!["timeGridDay","timeGridWeek"].includes(viewType)) return;
 
     const dateStr = info.date.toISOString().split("T")[0];
     const hour = info.date.getHours();
-
     const hourEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr && parseInt(getHourStr(e.start)) === hour);
     if(hourEvents.length === 0) return;
 
     const maxSlots = 5;
-    const overflow = hourEvents.length > maxSlots ? hourEvents.length - maxSlots + 1 : 0;
-    const displayEvents = hourEvents.slice(0,maxSlots);
+    const displayEvents = hourEvents.slice(0, maxSlots);
 
     const wrap = document.createElement("div");
-    displayEvents.forEach((e,i)=>{
+    wrap.style.display = "flex";
+    wrap.style.flexDirection = "column";
+    wrap.style.height = "100%";
+    displayEvents.forEach((e,i) => {
         const div = document.createElement("div");
         div.className = "slot-label slot-label"+e.status.replace(/\s/g,"");
-        div.textContent = (i===maxSlots-1 && overflow>0) ? "+"+overflow : e.status;
+        div.textContent = e.status;
+        div.style.flex = "1"; // 縦に均等分割
         wrap.appendChild(div);
     });
+
+    // 週ビューは件数表示なし
+    if(viewType === "timeGridWeek") wrap.innerHTML = wrap.innerHTML; 
 
     info.el.appendChild(wrap);
 }
@@ -108,7 +138,9 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
     dateClick: info => calendar.changeView("timeGridDay", info.dateStr),
 
     slotLabelContent: info => {
-        const dateStr = calendar.getDate().toISOString().split("T")[0];
+        const viewType = calendar.view.type;
+        if(viewType === "timeGridWeek") return info.text; // 週ビューは件数非表示
+        const dateStr = info.date.toISOString().split("T")[0];
         const hour = info.date.getHours();
         const hourEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr && parseInt(getHourStr(e.start)) === hour);
         return info.text + " (" + hourEvents.length + ")";
