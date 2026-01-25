@@ -998,15 +998,27 @@ def update_record():
 
 
 
-@app.route("/schedule")
-def schedule():
-    records = get_schedule_records()
-    events = []
-    for r in records:
-        rounded = round_time_30min(r["next_call"])
-        events.append({
-            "start": rounded.strftime("%Y-%m-%dT%H:%M:%S"),
-            "status": r["status"],
-            "record_id": r["id"]
-        })
-    return render_template("schedule.html", events=events)
+@app.route("/schedule/month")
+def schedule_month():
+    events = get_schedule_records()
+    # 時刻丸めも必要なら行う
+    for r in events:
+        dt = round_time_30min(r["next_call"])
+        r["next_call"] = dt.strftime("%Y-%m-%dT%H:%M:%S")
+    return render_template("month.html", events=events)
+
+@app.route("/schedule/week")
+def schedule_week():
+    events = get_schedule_records()
+    for r in events:
+        dt = round_time_30min(r["next_call"])
+        r["next_call"] = dt.strftime("%Y-%m-%dT%H:%M:%S")
+    return render_template("week.html", events=events)
+
+@app.route("/schedule/day")
+def schedule_day():
+    events = get_schedule_records()
+    for r in events:
+        dt = round_time_30min(r["next_call"])
+        r["next_call"] = dt.strftime("%Y-%m-%dT%H:%M:%S")
+    return render_template("day.html", events=events)
