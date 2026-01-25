@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>商談カレンダー（月）</title>
 
+<!-- FullCalendar CSS/JS -->
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
@@ -17,7 +18,7 @@ body {
 .fc-day-sun { background: rgba(244, 67, 54, 0.08); }
 .fc-day-sat { background: rgba(33, 150, 243, 0.08); }
 
-/* 月ビューステータスラベル */
+/* 月ビューのステータスラベル */
 .summary-wrap {
     display: flex;
     flex-direction: column;
@@ -48,28 +49,30 @@ body {
 
 <script>
 // ===== サーバーからのイベント =====
-const RAW_EVENTS_ORIG = {{ events | tojson }};
+const RAW_EVENTS = {{ events | tojson }};
 
-// 時刻補正（-6時間）
-const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
-    const dt = new Date(e.start);
-    dt.setHours(dt.getHours() - 6);
-    return { ...e, start: dt };
-});
-
-// util
-const getDateStr = d => d.toISOString().split("T")[0];
+// ===== 月ビュー用ユーティリティ =====
+const getDateStr = d => {
+    if(typeof d === "string") d = new Date(d);
+    return d.toISOString().split("T")[0];
+};
 
 // ===== 月ビューステータス表示 =====
 function renderMonthSummary(info){
     if(info.view.type !== "dayGridMonth") return;
 
-    const dateStr = getDateStr(info.date);
+    const dateStr = info.date.toISOString().split("T")[0];
+
+    // 対象日のイベントを抽出
     const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
 
+    const STATUSES = ["商談待ち","返答待ち","リスケ","留守"];
     const countMap = {};
-    ["商談待ち","返答待ち","リスケ","留守"].forEach(s => countMap[s] = 0);
-    dayEvents.forEach(e => countMap[e.status] !== undefined && countMap[e.status]++);
+    STATUSES.forEach(s => countMap[s] = 0);
+
+    dayEvents.forEach(e => {
+        if(countMap[e.status] !== undefined) countMap[e.status]++;
+    });
 
     const wrap = document.createElement("div");
     wrap.className = "summary-wrap";
@@ -81,7 +84,7 @@ function renderMonthSummary(info){
         "留守": "#FFC107"
     };
 
-    ["商談待ち","返答待ち","リスケ","留守"].forEach(status => {
+    STATUSES.forEach(status => {
         const div = document.createElement("div");
         div.className = "summary";
         if(countMap[status] > 0){
