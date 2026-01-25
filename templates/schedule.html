@@ -30,7 +30,14 @@ body { font-family: system-ui, -apple-system; background:#f4f6f8; margin:0; padd
 <div id="calendar"></div>
 
 <script>
-const RAW_EVENTS = {{ events | tojson }};
+const RAW_EVENTS_UTC = {{ events | tojson }};
+
+// UTC → JST に変換
+const RAW_EVENTS = RAW_EVENTS_UTC.map(e => {
+    const dt = new Date(e.start);       // UTC としてパース
+    dt.setHours(dt.getHours() + 9);    // JST に変換
+    return { ...e, start: dt.toISOString().slice(0,19) }; // YYYY-MM-DDTHH:MM:SS
+});
 
 // 日付文字列だけ取得
 function getDateStr(iso){ return iso.split("T")[0]; }
@@ -110,6 +117,7 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
 
 calendar.render();
 </script>
+
 
 </body>
 </html>
