@@ -177,7 +177,6 @@ def status_color(status):
         "商談待ち": "#2196F3",
     }.get(status, "#BDBDBD")
 
-# Salesforce 取得関数
 def get_schedule_records():
     soql = """
         SELECT Id, Name, Field334__c, Field97__c
@@ -188,14 +187,14 @@ def get_schedule_records():
     result = sf.query_all(soql)
     records = []
     for r in result["records"]:
-        records.append({
-            "id": r["Id"],
-            "account": r["Name"],
-            "status": r.get("Field334__c"),
-            "next_call": r.get("Field97__c")
-        })
+        if r.get("Field97__c") and r.get("Field334__c"):
+            records.append({
+                "id": r["Id"],
+                "account": r["Name"],
+                "status": r.get("Field334__c"),
+                "next_call": r.get("Field97__c")
+            })
     return records
-
 
 def round_time_30min(dt):
     # strならdatetimeに変換
@@ -204,7 +203,6 @@ def round_time_30min(dt):
             dt = datetime.fromisoformat(dt.replace("Z", ""))
         except ValueError:
             dt = datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
-
     minute = dt.minute
     if minute < 15:
         minute = 0
@@ -213,7 +211,6 @@ def round_time_30min(dt):
     else:
         dt = dt.replace(hour=dt.hour + 1)
         minute = 0
-
     return dt.replace(minute=minute, second=0, microsecond=0)
 
 @app.route('/')
@@ -1014,17 +1011,11 @@ def schedule():
     events = []
 
     for r in records:
-        if not r["next_call"] or not r["status"]:
-            continue
-
         rounded_time = round_time_30min(r["next_call"])
-
         events.append({
-            "start": rounded_time.isoformat(),
-            "status": r["status"],          # ← 集計用
+            "start": rounded_time.strftime("%Y-%m-%dT%H:%M:%S"),  # Zなしでローカル時間
+            "status": r["status"],
             "record_id": r["id"]
         })
 
     return render_template("schedule.html", events=events)
-
-
