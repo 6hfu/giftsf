@@ -4,36 +4,51 @@
 <meta charset="UTF-8">
 <title>商談カレンダー</title>
 
-<!-- FullCalendar -->
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
+body {
+    background: #f5f7fa;
+    font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
+}
+
+/* ===== 土日背景 ===== */
+.fc-day-sun {
+    background: rgba(244, 67, 54, 0.08);
+}
+.fc-day-sat {
+    background: rgba(33, 150, 243, 0.08);
+}
+
 /* ===== 月ビュー（縦4枠・高さ固定） ===== */
 .summary-wrap {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    height: 80px;   /* 4枠分固定 */
-    margin-top: 2px;
+    height: 100px;              /* ← 高さアップ */
+    margin-top: 6px;
+    gap: 6px;                   /* ← 余白追加 */
 }
 
 .summary {
     font-size: 13px;
-    padding: 3px 6px;
-    border-radius: 4px;
+    padding: 6px 8px;           /* ← 枠を大きく */
+    border-radius: 6px;
     color: #fff;
-    min-height: 18px;
-    margin-top: 1px;
+    min-height: 20px;
+    line-height: 1.4;
+    font-weight: 600;
 }
 
 /* ===== 週・日ビュー ===== */
 .slot-label {
     font-size: 12px;
-    margin: 1px 0;
-    padding: 3px 5px;
-    border-radius: 4px;
+    margin: 3px 0;
+    padding: 4px 6px;
+    border-radius: 6px;
     color: #fff;
+    font-weight: 600;
 }
 </style>
 </head>
@@ -45,16 +60,21 @@
 // ===== サーバーからのイベント =====
 const RAW_EVENTS_ORIG = {{ events | tojson }};
 
-// ===== ステータス色（HTML側で完全制御） =====
+// ===== ステータス色 =====
 const STATUS_COLORS = {
-    "留守": "#FFC107",
-    "リスケ": "#FF9800",
+    "商談待ち": "#2196F3",
     "返答待ち": "#03A9F4",
-    "商談待ち": "#2196F3"
+    "リスケ": "#FF9800",
+    "留守": "#FFC107"
 };
 
-// 月表示で使う順番（縦4枠）
-const SUMMARY_STATUSES = ["留守", "リスケ", "返答待ち", "商談待ち"];
+// ===== 表示順（指定通り） =====
+const SUMMARY_STATUSES = [
+    "商談待ち",
+    "返答待ち",
+    "リスケ",
+    "留守"
+];
 
 // ===== 時刻補正（-6時間） =====
 const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
@@ -63,7 +83,7 @@ const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
     return { ...e, start: dt };
 });
 
-// ユーティリティ
+// util
 const getDateStr = d => d.toISOString().split("T")[0];
 const getHour = d => d.getHours();
 
@@ -96,7 +116,7 @@ function renderMonthSummary(info){
     info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(wrap);
 }
 
-// ===== 週・日ビュー描画（★修正ポイント） =====
+// ===== 週・日ビュー =====
 function renderDayWeekSlots(info){
     const dateStr = getDateStr(info.date);
     const hour = getHour(info.date);
@@ -145,7 +165,7 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
     allDaySlot: false,
 
     dayCellDidMount: renderMonthSummary,
-    slotLaneDidMount: renderDayWeekSlots, // ← ★重要（修正点）
+    slotLaneDidMount: renderDayWeekSlots,
 
     dateClick: info => calendar.changeView("timeGridDay", info.dateStr),
 
@@ -154,7 +174,7 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
             e => getDateStr(e.start) === getDateStr(info.date) &&
                  getHour(e.start) === getHour(info.date)
         ).length;
-        return `${info.text} (${count})`;
+        return `${info.text}（${count}件）`;
     }
 });
 
