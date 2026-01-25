@@ -46,7 +46,7 @@ body { font-family: system-ui, -apple-system; background:#f4f6f8; margin:0; padd
 <script>
 const RAW_EVENTS = {{ events | tojson }};
 
-// 月ビューサマリ（縦に並べる）
+// ----------------- 月ビューサマリ -----------------
 function renderMonthSummary(calendar, info){
     if(calendar.view.type !== "dayGridMonth") return;
     const dateStr = info.date.toISOString().split("T")[0];
@@ -68,26 +68,29 @@ function renderMonthSummary(calendar, info){
     target?.appendChild(wrap);
 }
 
-// 日ビュー用縦5枠ガントチャート
-function prepareFCEvents(raw){
-    const dayMap = {};
-    raw.forEach(e => {
+// ----------------- 日・週ビュー用 5枠ガントチャート -----------------
+function prepareDayWeekEvents(raw){
+    const events = [];
+    const map = {};
+
+    // 日付+時間でグループ化
+    raw.forEach(e=>{
         const dt = new Date(e.start);
         const dateStr = dt.toISOString().split("T")[0];
         const hour = dt.getHours();
-        dayMap[dateStr] = dayMap[dateStr] || {};
-        dayMap[dateStr][hour] = dayMap[dateStr][hour] || [];
-        dayMap[dateStr][hour].push(e);
+        map[dateStr] = map[dateStr] || {};
+        map[dateStr][hour] = map[dateStr][hour] || [];
+        map[dateStr][hour].push(e);
     });
 
-    const events = [];
-    Object.keys(dayMap).forEach(date=>{
-        Object.keys(dayMap[date]).forEach(hour=>{
-            const list = dayMap[date][hour];
+    // 縦5枠に詰める
+    Object.keys(map).forEach(date=>{
+        Object.keys(map[date]).forEach(hour=>{
+            const list = map[date][hour];
             const maxSlots = 5;
             const overflow = list.length > maxSlots ? list.length - maxSlots + 1 : 0;
 
-            for(let i=0; i<Math.min(maxSlots, list.length); i++){
+            for(let i=0;i<Math.min(list.length,maxSlots);i++){
                 const e = list[i];
                 const start = new Date(e.start);
                 const end = new Date(start.getTime()+30*60*1000);
@@ -104,8 +107,9 @@ function prepareFCEvents(raw){
     return events;
 }
 
-const EVENTS = prepareFCEvents(RAW_EVENTS);
+const EVENTS = prepareDayWeekEvents(RAW_EVENTS);
 
+// ----------------- カレンダー初期化 -----------------
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
     locale:"ja",
     initialView:"dayGridMonth",
@@ -119,6 +123,8 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
     allDaySlot:false,
     dayCellDidMount:function(info){ renderMonthSummary(calendar, info); },
     dateClick:function(info){ calendar.changeView("timeGridDay", info.dateStr); },
+
+    // 時間ラベル横に件数表示
     slotLabelContent:function(info){
         const dateStr = calendar.getDate().toISOString().split("T")[0];
         const hourEvents = RAW_EVENTS.filter(e=>{
