@@ -18,13 +18,12 @@ body { font-family: system-ui, -apple-system; background:#f4f6f8; margin:0; padd
 .summary返答待ち  { background:#03A9F4; color:#fff; }
 .summary商談待ち  { background:#2196F3; color:#fff; }
 
-/* ガントチャート風イベント */
-.fc-event { font-size:14px; padding:6px 8px; border-radius:6px; margin:2px 0; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.fc-event留守      { background:#FFC107; color:#000; }
-.fc-eventリスケ    { background:#FF9800; color:#fff; }
-.fc-event返答待ち  { background:#03A9F4; color:#fff; }
-.fc-event商談待ち  { background:#2196F3; color:#fff; }
-.fc-event-default  { background:#BDBDBD; color:#fff; }
+/* 日・週ビューの縦5枠ラベル */
+.slot-label { font-size:14px; padding:6px 8px; border-radius:6px; margin:2px 0; text-align:center; color:#fff; }
+.slot-label留守      { background:#FFC107; color:#000; }
+.slot-labelリスケ    { background:#FF9800; color:#fff; }
+.slot-label返答待ち  { background:#03A9F4; color:#fff; }
+.slot-label商談待ち  { background:#2196F3; color:#fff; }
 </style>
 </head>
 <body>
@@ -33,12 +32,9 @@ body { font-family: system-ui, -apple-system; background:#f4f6f8; margin:0; padd
 <script>
 const RAW_EVENTS = {{ events | tojson }};
 
-// -------------------------------------
-// 月ビューサマリ
-// -------------------------------------
+// ----------------- 月ビューサマリ（ステータス件数） -----------------
 function renderMonthSummary(calendar, info){
     if(calendar.view.type !== "dayGridMonth") return;
-
     const dateStr = info.date.toISOString().split("T")[0];
     const dayEvents = RAW_EVENTS.filter(e => e.start.startsWith(dateStr));
     if(dayEvents.length===0) return;
@@ -58,65 +54,48 @@ function renderMonthSummary(calendar, info){
     target?.appendChild(wrap);
 }
 
-// -------------------------------------
-// 日・週ビュー用 5枠ガントチャート
-// -------------------------------------
-function prepareDayWeekEvents(raw){
-    const events = [];
-    const map = {};
+// ----------------- 日・週ビュー 縦5枠生成 -----------------
+function renderDayWeekSlots(info){
+    if(!["timeGridDay","timeGridWeek"].includes(info.view.type)) return;
 
-    // 日付+時間でグループ化
-    raw.forEach(e=>{
-        const dt = new Date(e.start);
-        const dateStr = dt.toISOString().split("T")[0];
-        const hour = dt.getHours();
-        map[dateStr] = map[dateStr] || {};
-        map[dateStr][hour] = map[dateStr][hour] || [];
-        map[dateStr][hour].push(e);
+    const dateStr = info.date.toISOString().split("T")[0];
+    const hour = info.date.getHours();
+    const hourEvents = RAW_EVENTS.filter(e=>{
+        const d = new Date(e.start);
+        return d.getHours()===hour && d.toISOString().startsWith(dateStr);
+    });
+    if(hourEvents.length===0) return;
+
+    // 縦5枠に圧縮
+    const maxSlots = 5;
+    const overflow = hourEvents.length > maxSlots ? hourEvents.length - maxSlots + 1 : 0;
+    const displayEvents = hourEvents.slice(0,maxSlots);
+
+    const wrap = document.createElement("div");
+    displayEvents.forEach((e,i)=>{
+        const div = document.createElement("div");
+        div.className = "slot-label slot-label"+e.status.replace(/\s/g,"");
+        div.textContent = (i===maxSlots-1 && overflow>0) ? "+"+overflow : e.status;
+        wrap.appendChild(div);
     });
 
-    // 縦5枠に圧縮してイベント作成
-    Object.keys(map).forEach(date=>{
-        Object.keys(map[date]).forEach(hour=>{
-            const list = map[date][hour];
-            const maxSlots = 5;
-            const overflow = list.length > maxSlots ? list.length - maxSlots + 1 : 0;
-
-            for(let i=0;i<Math.min(list.length,maxSlots);i++){
-                const e = list[i];
-                const start = new Date(e.start);
-                const end = new Date(start.getTime() + 30*60*1000);
-                events.push({
-                    start: start,
-                    end: end,
-                    title: i===maxSlots-1 && overflow>0 ? "+"+overflow : e.status,
-                    className: "fc-event" + e.status.replace(/\s/g,"")
-                });
-            }
-        });
-    });
-
-    return events;
+    info.el.appendChild(wrap);
 }
 
-const EVENTS = prepareDayWeekEvents(RAW_EVENTS);
-
-// -------------------------------------
-// カレンダー初期化
-// -------------------------------------
+// ----------------- カレンダー初期化 -----------------
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
     locale: "ja",
     initialView: "dayGridMonth",
     height: "auto",
     headerToolbar: { left:"prev,next today", center:"title", right:"dayGridMonth,timeGridWeek,timeGridDay" },
-    events: EVENTS,
-    eventDisplay: "block",
     nowIndicator: true,
     slotMinTime: "08:00:00",
     slotMaxTime: "20:00:00",
     allDaySlot: false,
 
     dayCellDidMount: function(info){ renderMonthSummary(calendar, info); },
+    slotLaneDidMount: function(info){ renderDayWeekSlots(info); },
+
     dateClick: function(info){ calendar.changeView("timeGridDay", info.dateStr); },
 
     // 時間ラベル横に件数表示
@@ -124,8 +103,7 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
         const dateStr = calendar.getDate().toISOString().split("T")[0];
         const hourEvents = RAW_EVENTS.filter(e=>{
             const d = new Date(e.start);
-            return d.getHours() === info.date.getHours() &&
-                   d.toISOString().startsWith(dateStr);
+            return d.getHours() === info.date.getHours() && d.toISOString().startsWith(dateStr);
         });
         return info.text + " (" + hourEvents.length + ")";
     }
