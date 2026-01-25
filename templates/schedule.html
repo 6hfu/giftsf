@@ -12,23 +12,27 @@
 /* --- 月ビューステータス --- */
 .month-summary {
     display: flex;
+    flex-direction: column; /* 縦並び */
     justify-content: space-between;
     font-size: 12px;
+    height: 80px; /* 縦4ステータス分の高さ固定 */
     margin-top: 2px;
 }
 .summaryBox {
-    width: 23%;
     height: 20px;
     line-height: 20px;
     text-align: center;
     border-radius: 4px;
     color: #fff;
     font-weight: bold;
+    margin-bottom: 2px;
+    font-size: 12px;
 }
-.summaryDone { background-color: #4caf50; }     /* 完了 */
-.summaryPending { background-color: #ff9800; }  /* 保留 */
-.summaryInProgress { background-color: #2196f3; } /* 進行中 */
-.summaryCancelled { background-color: #f44336; } /* キャンセル */
+/* サンプル色、status名に合わせてカスタマイズ可能 */
+.summaryDone { background-color: #4caf50; }
+.summaryPending { background-color: #ff9800; }
+.summaryInProgress { background-color: #2196f3; }
+.summaryCancelled { background-color: #f44336; }
 
 /* --- 日・週ビュー枠調整 --- */
 .fc-timegrid-slot {
@@ -71,17 +75,22 @@ function renderMonthSummary(calendar, info){
     if(calendar.view.type !== "dayGridMonth") return;
     const dateStr = info.date.toISOString().split("T")[0];
     const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
+    if(dayEvents.length === 0) return; // 0件なら非表示
 
-    const statuses = ["Done","Pending","InProgress","Cancelled"]; // 4ステータス固定
+    // サーバーから渡されるステータスをそのまま使用
+    const statuses = [...new Set(dayEvents.map(e=>e.status))]; 
+    if(statuses.length === 0) return;
+
     const grouped = {};
     statuses.forEach(s => grouped[s] = 0);
-    dayEvents.forEach(e => { if(e.status) grouped[e.status] = (grouped[e.status]||0)+1; });
+    dayEvents.forEach(e => { if(e.status) grouped[e.status]++; });
 
     const wrap = document.createElement("div");
     wrap.className = "month-summary";
+
     statuses.forEach(s => {
         const div = document.createElement("div");
-        div.className = "summaryBox summary"+s;
+        div.className = "summaryBox summary" + s.replace(/\s/g,''); // class名用
         div.textContent = s + " " + grouped[s];
         wrap.appendChild(div);
     });
@@ -107,16 +116,14 @@ function renderDayWeekSlots(info){
     wrap.style.display = "flex";
     wrap.style.flexDirection = "column";
     wrap.style.height = "100%";
+
     displayEvents.forEach((e,i) => {
         const div = document.createElement("div");
-        div.className = "slot-label slot-label"+e.status.replace(/\s/g,"");
+        div.className = "slot-label slot-label" + e.status.replace(/\s/g,"");
         div.textContent = e.status;
         div.style.flex = "1"; // 縦に均等分割
         wrap.appendChild(div);
     });
-
-    // 週ビューは件数表示なし
-    if(viewType === "timeGridWeek") wrap.innerHTML = wrap.innerHTML; 
 
     info.el.appendChild(wrap);
 }
