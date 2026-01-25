@@ -9,12 +9,12 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
-/* 月ビューサマリ（縦4行固定） */
+/* 月ビューサマリ（縦4行固定、高さ確保） */
 .summary-wrap {
     display: flex;
     flex-direction: column;
     justify-content: space-between; /* 縦に均等配置 */
-    height: 80px; /* 4行分の高さを固定 */
+    height: 80px; /* 4行分の高さ固定 */
     margin-top: 2px;
 }
 
@@ -24,6 +24,7 @@
     border-radius: 4px;
     color: #fff;
     display: block;
+    min-height: 18px; /* 枠高さ確保 */
 }
 
 /* 日・週ビュースロット */
@@ -75,7 +76,7 @@ const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
 function getDateStr(dt){ return dt.toISOString().split("T")[0]; }
 function getHourStr(dt){ return dt.toISOString().split("T")[1].split(":")[0]; }
 
-// 月ビューサマリ（縦4行固定）
+// 月ビューサマリ（縦4行固定、0件は非表示）
 function renderMonthSummary(info){
     if(info.view.type !== "dayGridMonth") return;
 
@@ -84,7 +85,7 @@ function renderMonthSummary(info){
 
     // ステータスごとの件数
     const grouped = {};
-    SUMMARY_STATUSES.forEach(s => grouped[s] = 0); // 0件でも表示
+    SUMMARY_STATUSES.forEach(s => grouped[s] = 0);
     dayEvents.forEach(e => { if(grouped.hasOwnProperty(e.status)) grouped[e.status] += 1; });
 
     const wrap = document.createElement("div");
@@ -93,8 +94,12 @@ function renderMonthSummary(info){
     SUMMARY_STATUSES.forEach(status => {
         const div = document.createElement("div");
         div.className = "summary";
-        div.textContent = `${status} ${grouped[status]}件`;
-        div.style.backgroundColor = STATUS_COLORS[status] || "#BDBDBD";
+        if(grouped[status] > 0){
+            div.textContent = `${status} ${grouped[status]}件`;
+            div.style.backgroundColor = STATUS_COLORS[status] || "#BDBDBD";
+        } else {
+            div.style.backgroundColor = "transparent"; // 0件は非表示、枠は高さ確保
+        }
         wrap.appendChild(div);
     });
 
