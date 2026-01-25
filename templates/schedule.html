@@ -9,12 +9,12 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
-/* 月ビューサマリ（縦4行固定、高さ確保） */
+/* ===== 月ビュー（縦4枠・高さ固定） ===== */
 .summary-wrap {
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* 縦に均等配置 */
-    height: 80px; /* 4行分の高さ固定 */
+    justify-content: space-between;
+    height: 80px;   /* 4枠分固定 */
     margin-top: 2px;
 }
 
@@ -23,24 +23,17 @@
     padding: 3px 6px;
     border-radius: 4px;
     color: #fff;
-    display: block;
-    min-height: 18px; /* 枠高さ確保 */
+    min-height: 18px;
+    margin-top: 1px;
 }
 
-/* 日・週ビュースロット */
+/* ===== 週・日ビュー ===== */
 .slot-label {
     font-size: 12px;
     margin: 1px 0;
     padding: 3px 5px;
     border-radius: 4px;
     color: #fff;
-    display: block;
-}
-
-/* ホバー時 */
-.slot-label:hover, .summary:hover {
-    opacity: 0.8;
-    cursor: pointer;
 }
 </style>
 </head>
@@ -49,44 +42,41 @@
 <div id="calendar"></div>
 
 <script>
-// サーバーから渡されるイベント
+// ===== サーバーからのイベント =====
 const RAW_EVENTS_ORIG = {{ events | tojson }};
 
-// ステータスごとの色
+// ===== ステータス色（HTML側で完全制御） =====
 const STATUS_COLORS = {
-    "成約": "#4CAF50",
-    "NG": "#9E9E9E",
     "留守": "#FFC107",
     "リスケ": "#FF9800",
     "返答待ち": "#03A9F4",
     "商談待ち": "#2196F3"
 };
 
-// 月サマリで表示するステータス順（縦固定）
+// 月表示で使う順番（縦4枠）
 const SUMMARY_STATUSES = ["留守", "リスケ", "返答待ち", "商談待ち"];
 
-// UTC補正 12時間→6時間
+// ===== 時刻補正（-6時間） =====
 const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
     const dt = new Date(e.start);
     dt.setHours(dt.getHours() - 6);
     return { ...e, start: dt };
 });
 
-// 日付・時間文字列
-function getDateStr(dt){ return dt.toISOString().split("T")[0]; }
-function getHourStr(dt){ return dt.toISOString().split("T")[1].split(":")[0]; }
+// ユーティリティ
+const getDateStr = d => d.toISOString().split("T")[0];
+const getHour = d => d.getHours();
 
-// 月ビューサマリ（縦4行固定、0件は非表示）
+// ===== 月ビュー描画 =====
 function renderMonthSummary(info){
     if(info.view.type !== "dayGridMonth") return;
 
-    const dateStr = info.date.toISOString().split("T")[0];
+    const dateStr = getDateStr(info.date);
     const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
 
-    // ステータスごとの件数
-    const grouped = {};
-    SUMMARY_STATUSES.forEach(s => grouped[s] = 0);
-    dayEvents.forEach(e => { if(grouped.hasOwnProperty(e.status)) grouped[e.status] += 1; });
+    const countMap = {};
+    SUMMARY_STATUSES.forEach(s => countMap[s] = 0);
+    dayEvents.forEach(e => countMap[e.status] !== undefined && countMap[e.status]++);
 
     const wrap = document.createElement("div");
     wrap.className = "summary-wrap";
@@ -94,38 +84,35 @@ function renderMonthSummary(info){
     SUMMARY_STATUSES.forEach(status => {
         const div = document.createElement("div");
         div.className = "summary";
-        if(grouped[status] > 0){
-            div.textContent = `${status} ${grouped[status]}件`;
-            div.style.backgroundColor = STATUS_COLORS[status] || "#BDBDBD";
-        } else {
-            div.style.backgroundColor = "transparent"; // 0件は非表示、枠は高さ確保
+
+        if(countMap[status] > 0){
+            div.textContent = `${status} ${countMap[status]}件`;
+            div.style.backgroundColor = STATUS_COLORS[status];
         }
+
         wrap.appendChild(div);
     });
 
-    const target = info.el.querySelector(".fc-daygrid-day-frame");
-    if(target) target.appendChild(wrap);
+    info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(wrap);
 }
 
-// 日・週ビュースロット
+// ===== 週・日ビュー描画（★修正ポイント） =====
 function renderDayWeekSlots(info){
-    if(!["timeGridDay","timeGridWeek"].includes(info.view.type)) return;
+    const dateStr = getDateStr(info.date);
+    const hour = getHour(info.date);
 
-    const dateStr = info.date.toISOString().split("T")[0];
-    const hour = info.date.getHours();
+    const hourEvents = RAW_EVENTS.filter(
+        e => getDateStr(e.start) === dateStr && getHour(e.start) === hour
+    );
 
-    const hourEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr && parseInt(getHourStr(e.start)) === hour);
     if(hourEvents.length === 0) return;
 
-    const maxSlots = 5;
-    const overflow = hourEvents.length > maxSlots ? hourEvents.length - maxSlots + 1 : 0;
-    const displayEvents = hourEvents.slice(0,maxSlots);
-
     const wrap = document.createElement("div");
-    displayEvents.forEach((e,i)=>{
+
+    hourEvents.slice(0,5).forEach(e => {
         const div = document.createElement("div");
         div.className = "slot-label";
-        div.textContent = (i===maxSlots-1 && overflow>0) ? "+"+overflow : e.status;
+        div.textContent = e.status;
         div.style.backgroundColor = STATUS_COLORS[e.status] || "#BDBDBD";
         wrap.appendChild(div);
     });
@@ -133,32 +120,41 @@ function renderDayWeekSlots(info){
     info.el.appendChild(wrap);
 }
 
-// カレンダー初期化
+// ===== カレンダー初期化 =====
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
     locale: "ja",
     initialView: "dayGridMonth",
     height: "auto",
-    headerToolbar: { left:"prev,next today", center:"title", right:"dayGridMonth,timeGridWeek,timeGridDay" },
+
+    headerToolbar: {
+        left: "prev,next today",
+        center: "title",
+        right: "dayGridMonth,timeGridWeek,timeGridDay"
+    },
+
+    buttonText: {
+        today: "今日",
+        month: "月",
+        week: "週",
+        day: "日"
+    },
+
     nowIndicator: true,
     slotMinTime: "08:00:00",
     slotMaxTime: "20:00:00",
     allDaySlot: false,
 
-    dayCellDidMount: info => renderMonthSummary(info),
-    slotLaneContent: info => renderDayWeekSlots(info),
+    dayCellDidMount: renderMonthSummary,
+    slotLaneDidMount: renderDayWeekSlots, // ← ★重要（修正点）
 
     dateClick: info => calendar.changeView("timeGridDay", info.dateStr),
 
-    viewDidMount: info => {
-        renderMonthSummary(info);
-        renderDayWeekSlots(info);
-    },
-
     slotLabelContent: info => {
-        const dateStr = calendar.getDate().toISOString().split("T")[0];
-        const hour = info.date.getHours();
-        const hourEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr && parseInt(getHourStr(e.start)) === hour);
-        return info.text + " (" + hourEvents.length + ")";
+        const count = RAW_EVENTS.filter(
+            e => getDateStr(e.start) === getDateStr(info.date) &&
+                 getHour(e.start) === getHour(info.date)
+        ).length;
+        return `${info.text} (${count})`;
     }
 });
 
