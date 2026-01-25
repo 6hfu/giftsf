@@ -33,9 +33,8 @@ body { font-family: system-ui, -apple-system; background:#f4f6f8; margin:0; padd
 const RAW_EVENTS = {{ events | tojson }};
 
 // 日付文字列だけ取得
-function getDateStr(iso){
-    return iso.split("T")[0];
-}
+function getDateStr(iso){ return iso.split("T")[0]; }
+function getHourStr(iso){ return iso.split("T")[1].split(":")[0]; }
 
 // ----------------- 月ビューサマリ -----------------
 function renderMonthSummary(calendar, info){
@@ -67,10 +66,7 @@ function renderDayWeekSlots(info){
     const dateStr = info.date.toISOString().split("T")[0];
     const hour = info.date.getHours();
 
-    const hourEvents = RAW_EVENTS.filter(e => {
-        const dHour = parseInt(e.start.split("T")[1].split(":")[0]);
-        return getDateStr(e.start) === dateStr && dHour === hour;
-    });
+    const hourEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr && parseInt(getHourStr(e.start)) === hour);
     if(hourEvents.length===0) return;
 
     const maxSlots = 5;
@@ -106,15 +102,14 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
 
     slotLabelContent: info=>{
         const dateStr = calendar.getDate().toISOString().split("T")[0];
-        const hourEvents = RAW_EVENTS.filter(e=>{
-            const dHour = parseInt(e.start.split("T")[1].split(":")[0]);
-            return getDateStr(e.start) === dateStr && dHour === info.date.getHours();
-        });
+        const hour = info.date.getHours();
+        const hourEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr && parseInt(getHourStr(e.start)) === hour);
         return info.text + " (" + hourEvents.length + ")";
     }
 });
 
 calendar.render();
 </script>
+
 </body>
 </html>
