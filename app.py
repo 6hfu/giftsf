@@ -167,15 +167,9 @@ def get_field_descriptions():
             }
     return field_defs
 
-def status_color(status):
-    return {
-        "成約": "#4CAF50",
-        "NG": "#9E9E9E",
-        "留守": "#FFC107",
-        "リスケ": "#FF9800",
-        "返答待ち": "#03A9F4",
-        "商談待ち": "#2196F3",
-    }.get(status, "#BDBDBD")
+
+
+
 
 def get_schedule_records():
     soql = """
@@ -190,7 +184,6 @@ def get_schedule_records():
         status = r.get("Field334__c")
         next_call = r.get("Field97__c")
         if next_call and status not in ["成約","NG"]:
-            # 1日ずれ防止 → ローカル時間に変換
             dt = datetime.fromisoformat(next_call.replace("Z",""))
             records.append({
                 "id": r["Id"],
@@ -209,7 +202,7 @@ def round_time_30min(dt):
     elif minute < 45:
         minute = 30
     else:
-        dt = dt.replace(hour=dt.hour+1)
+        dt = dt.replace(hour=(dt.hour + 1) % 24)
         minute = 0
     return dt.replace(minute=minute, second=0, microsecond=0)
 
@@ -1008,7 +1001,6 @@ def update_record():
 
 
 @app.route("/schedule")
-@login_required
 def schedule():
     records = get_schedule_records()
     events = []
