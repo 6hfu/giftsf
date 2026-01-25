@@ -12,12 +12,18 @@ body { font-family: system-ui, -apple-system; background:#f4f6f8; margin:0; padd
 #calendar { background:#fff; border-radius:12px; padding:12px; }
 
 /* 月ビューサマリ（件数表示は optional） */
-.summary { font-size:11px; padding:4px 6px; border-radius:6px; color:#fff; margin-bottom:3px; white-space:nowrap; }
+.summary { font-size:13px; padding:4px 6px; border-radius:6px; color:#fff; margin-bottom:3px; white-space:nowrap; }
 
-/* ステータス別イベント */
-.fc-event { font-size:11px; padding:2px 4px; border-radius:4px; margin:1px 0; text-align:center; }
-.fc-event成約      { background:#4CAF50; color:#fff; }
-.fc-eventNG        { background:#9E9E9E; color:#fff; }
+/* ガントチャート風イベント */
+.fc-event {
+    font-size:14px;           /* 文字大きく */
+    padding:4px 6px;          /* パディング広め */
+    border-radius:6px;
+    margin:2px 0;
+    text-align:center;
+}
+
+/* ステータス別色 */
 .fc-event留守      { background:#FFC107; color:#000; }
 .fc-eventリスケ    { background:#FF9800; color:#fff; }
 .fc-event返答待ち  { background:#03A9F4; color:#fff; }
@@ -36,7 +42,7 @@ const RAW_EVENTS = {{ events | tojson }};
 function renderMonthSummary(calendar, info){
     if(calendar.view.type!=="dayGridMonth") return;
     const dateStr = info.date.toISOString().split("T")[0];
-    const dayEvents = RAW_EVENTS.filter(e=>e.start.startsWith(dateStr));
+    const dayEvents = RAW_EVENTS.filter(e=>e.start.startsWith(dateStr) && !["成約","NG"].includes(e.status));
     if(dayEvents.length===0) return;
     const grouped = {};
     dayEvents.forEach(e=>{ if(e.status) grouped[e.status]=(grouped[e.status]||0)+1; });
@@ -44,7 +50,7 @@ function renderMonthSummary(calendar, info){
     for(const status of Object.keys(grouped)){
         const div = document.createElement("div");
         div.className = "summary";
-        div.textContent = status; // 件数は非表示
+        div.textContent = status; // 件数非表示
         wrap.appendChild(div);
     }
     const target = info.el.querySelector(".fc-daygrid-day-events") || info.el.querySelector(".fc-daygrid-day-frame");
@@ -53,12 +59,14 @@ function renderMonthSummary(calendar, info){
 
 // FullCalendar用に変換（30分ブロック）
 function prepareFCEvents(raw){
-    return raw.map(e=>{
-        const start = new Date(e.start);
-        const end = e.end ? new Date(e.end) : new Date(start.getTime()+30*60*1000);
-        const cls = e.status ? "fc-event"+e.status.replace(/\s/g,"") : "fc-event-default";
-        return { start:start, end:end, title:e.status, className:cls };
-    });
+    return raw
+        .filter(e => !["成約","NG"].includes(e.status)) // 非表示ステータス除外
+        .map(e=>{
+            const start = new Date(e.start);
+            const end = e.end ? new Date(e.end) : new Date(start.getTime()+30*60*1000);
+            const cls = e.status ? "fc-event"+e.status.replace(/\s/g,"") : "fc-event-default";
+            return { start:start, end:end, title:e.status, className:cls };
+        });
 }
 
 const EVENTS = prepareFCEvents(RAW_EVENTS);
