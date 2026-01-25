@@ -33,13 +33,20 @@ body {
 
 .summary {
     font-size: 13px;
-    padding: 6px 8px;           /* ← 枠を大きく */
+    padding: 6px 8px;
     border-radius: 6px;
     color: #fff;
-    min-height: 20px;
-    line-height: 1.4;
+    min-height: 22px;
+
+    display: flex;               /* ★追加 */
+    align-items: center;         /* ★縦中央 */
+    justify-content: center;     /* ★横中央 */
+
+    line-height: 1;              /* ★重要：余計な下ズレ防止 */
     font-weight: 600;
+    box-sizing: border-box;
 }
+
 
 /* ===== 週・日ビュー ===== */
 .slot-label {
