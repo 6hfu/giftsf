@@ -14,12 +14,8 @@ body {
 }
 
 /* ===== 土日背景（月表示含む） ===== */
-.fc-day-sun {
-    background: rgba(244, 67, 54, 0.08);
-}
-.fc-day-sat {
-    background: rgba(33, 150, 243, 0.08);
-}
+.fc-day-sun { background: rgba(244, 67, 54, 0.08); }
+.fc-day-sat { background: rgba(33, 150, 243, 0.08); }
 
 /* ===== 月ビューのステータスラベル（そのまま） ===== */
 .summary-wrap {
@@ -30,7 +26,6 @@ body {
     margin-top: 6px;
     gap: 6px;
 }
-
 .summary {
     font-size: 13px;
     padding: 6px 8px;
@@ -43,33 +38,6 @@ body {
     line-height: 1;
     font-weight: 600;
     box-sizing: border-box;
-}
-
-/* ===== 週・日ビュー：30分枠を広げる ===== */
-.fc-timegrid-slot {
-    height: 48px !important;
-}
-
-/* ===== 週・日ビュー：件数バー風 ===== */
-.count-wrap {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    margin-left: 4px;
-}
-
-.count-bar {
-    height: 16px;
-    border-radius: 4px;
-    background: #2196F3;
-    flex: 1;
-}
-
-.count-more {
-    font-size: 12px;
-    font-weight: 600;
-    color: #555;
-    margin-left: 4px;
 }
 </style>
 </head>
@@ -90,7 +58,6 @@ const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
 
 // util
 const getDateStr = d => d.toISOString().split("T")[0];
-const getHour = d => d.getHours();
 
 // ===== 月ビュー描画（既存） =====
 function renderMonthSummary(info){
@@ -112,7 +79,6 @@ function renderMonthSummary(info){
 
         if(countMap[status] > 0){
             div.textContent = `${status} ${countMap[status]}件`;
-            // 色は月表示用
             const STATUS_COLORS = {
                 "商談待ち": "#2196F3",
                 "返答待ち": "#03A9F4",
@@ -128,69 +94,36 @@ function renderMonthSummary(info){
     info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(wrap);
 }
 
-// ===== 週・日ビュー：30分単位の件数バー =====
-function renderWeekDayCountBars(calendar) {
-    const view = calendar.view;
-    if (!["timeGridWeek", "timeGridDay"].includes(view.type)) return;
+// ===== 週/日ビュー用：30分単位の件数を疑似イベント化 =====
+function generateSlotCountEvents() {
+    const slotCounts = {};
 
-    // まず既存のバーを消す
-    document.querySelectorAll(".count-wrap").forEach(e => e.remove());
-
-    // 全スロットを取得
-    const slots = document.querySelectorAll(".fc-timegrid-slot");
-
-    slots.forEach(slot => {
-        const slotTimeEl = slot.querySelector(".fc-timegrid-slot-label");
-        if (!slotTimeEl) return;
-
-        // 時間テキストを取得（例 "08:00"）
-        const [hourStr, minStr] = slotTimeEl.textContent.split(":");
-        const hour = parseInt(hourStr);
-        const minutes = parseInt(minStr);
-
-        // スロットのDOMにイベント追加する部分
-        const slotRow = slot.querySelector(".fc-timegrid-slot-events");
-        if (!slotRow) return;
-
-        // スロットの「日付」を取得
-        const slotDateStr = calendar.view.currentStart.toISOString().split("T")[0];
-
-        // このスロットに該当するイベント数（RAW_EVENTS をそのまま使用）
-        const count = RAW_EVENTS.filter(e => {
-            const evDate = new Date(e.start);
-            return getDateStr(evDate) === slotDateStr &&
-                   evDate.getHours() === hour &&
-                   evDate.getMinutes() === minutes;
-        }).length;
-
-        if (count === 0) return;
-
-        const wrap = document.createElement("div");
-        wrap.className = "count-wrap";
-
-        const maxBars = 5;
-        const visible = Math.min(count, maxBars);
-
-        for (let i = 0; i < visible; i++) {
-            const bar = document.createElement("div");
-            bar.className = "count-bar";
-
-            // 件数に応じて色を濃くする
-            const intensity = Math.min(1, count / 10); // 10件以上は最大濃度
-            bar.style.backgroundColor = `rgba(33, 150, 243, ${0.3 + 0.7 * intensity})`;
-
-            wrap.appendChild(bar);
-        }
-
-        if (count > maxBars) {
-            const more = document.createElement("div");
-            more.className = "count-more";
-            more.textContent = `+${count - maxBars}件`;
-            wrap.appendChild(more);
-        }
-
-        slotRow.appendChild(wrap);
+    RAW_EVENTS.forEach(e => {
+        const d = new Date(e.start);
+        const dateStr = getDateStr(d);
+        const hour = d.getHours();
+        const minutes = d.getMinutes();
+        const key = `${dateStr}-${hour}-${minutes}`;
+        slotCounts[key] = (slotCounts[key] || 0) + 1;
     });
+
+    const result = [];
+    Object.entries(slotCounts).forEach(([key, count]) => {
+        const [dateStr, hour, minutes] = key.split("-");
+        const start = new Date(dateStr);
+        start.setHours(parseInt(hour));
+        start.setMinutes(parseInt(minutes));
+
+        result.push({
+            title: `${count}件`,
+            start: start,
+            end: new Date(start.getTime() + 30*60000), // 30分幅
+            display: "background", // 背景表示で邪魔にならない
+            color: "rgba(33,150,243,0.3)"
+        });
+    });
+
+    return result;
 }
 
 // ===== カレンダー初期化 =====
@@ -210,14 +143,19 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
     allDaySlot: false,
     dayCellDidMount: renderMonthSummary,
     dateClick: info => calendar.changeView("timeGridDay", info.dateStr),
-    slotLabelContent: info => info.text,
+
+    // ★週/日ビュー用疑似イベント
+    events: generateSlotCountEvents(),
+
+    // 件数テキスト表示
+    eventContent: function(arg){
+        return {
+            html: `<div style="font-size:12px;font-weight:600;color:#000;text-align:center;">${arg.event.title}</div>`
+        };
+    }
 });
 
 calendar.render();
-
-// 週/日ビューに切り替えた時や日付変更時に描画
-calendar.on("datesSet", () => renderWeekDayCountBars(calendar));
-
 </script>
 
 </body>
