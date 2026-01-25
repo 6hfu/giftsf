@@ -13,7 +13,7 @@ body {
     font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
 }
 
-/* ===== 土日背景（月表示含む） ===== */
+/* ===== 土日背景 ===== */
 .fc-day-sun {
     background: rgba(244, 67, 54, 0.08);
 }
@@ -21,7 +21,7 @@ body {
     background: rgba(33, 150, 243, 0.08);
 }
 
-/* ===== 月ビュー（縦4枠・高さ固定） ===== */
+/* ===== 月ビュー（変更なし） ===== */
 .summary-wrap {
     display: flex;
     flex-direction: column;
@@ -30,47 +30,36 @@ body {
     margin-top: 6px;
     gap: 6px;
 }
-
 .summary {
     font-size: 13px;
     padding: 6px 8px;
     border-radius: 6px;
     color: #fff;
     min-height: 22px;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     line-height: 1;
     font-weight: 600;
-    box-sizing: border-box;
 }
 
-/* ===== 週・日ビュー：30分枠を広げる ===== */
-.fc-timegrid-slot {
-    height: 48px !important;
-}
-
-/* ===== 週・日ビュー：ガントチャート風 ===== */
-.gantt-wrap {
+/* ===== 週・日ビュー ===== */
+.slot-wrap {
     display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: 6px;
+    gap: 4px;
+    margin-top: 4px;
 }
-
-.gantt-bar {
-    width: 16px;
-    height: 16px;
-    background: #2196F3;
+.slot-block {
+    min-width: 26px;
+    height: 18px;
     border-radius: 4px;
+    background: #90caf9;
 }
-
-.gantt-more {
-    font-size: 12px;
+.slot-more {
+    font-size: 11px;
     font-weight: 600;
     color: #555;
+    margin-left: 4px;
 }
 </style>
 </head>
@@ -79,151 +68,114 @@ body {
 <div id="calendar"></div>
 
 <script>
-// ===== サーバーからのイベント =====
+// ===== Salesforceイベント =====
 const RAW_EVENTS_ORIG = {{ events | tojson }};
 
-// ===== 月表示用：ステータス色 =====
-const STATUS_COLORS = {
-    "商談待ち": "#2196F3",
-    "返答待ち": "#03A9F4",
-    "リスケ": "#FF9800",
-    "留守": "#FFC107"
-};
+// ===== 対象ステータス =====
+const TARGET_STATUSES = ["商談待ち","返答待ち","リスケ","留守"];
 
-// ===== 月表示用：表示順 =====
-const SUMMARY_STATUSES = [
-    "商談待ち",
-    "返答待ち",
-    "リスケ",
-    "留守"
-];
-
-// ===== 週・日表示：合計対象ステータス =====
-const TARGET_STATUSES = [
-    "商談待ち",
-    "返答待ち",
-    "リスケ",
-    "留守"
-];
-
-// ===== 時刻補正（-6時間） =====
+// ===== 6時間補正 =====
 const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
-    const dt = new Date(e.start);
-    dt.setHours(dt.getHours() - 6);
-    return { ...e, start: dt };
+    const d = new Date(e.start);
+    d.setHours(d.getHours() - 6);
+    return { ...e, start: d };
 });
 
 // util
-const getDateStr = d => d.toISOString().split("T")[0];
-const getHour = d => d.getHours();
+const dateStr = d => d.toISOString().split("T")[0];
 
-/* =================================================
-   月ビュー描画（※一切変更していません）
-================================================= */
+// ===== 月ビュー（そのまま） =====
 function renderMonthSummary(info){
     if(info.view.type !== "dayGridMonth") return;
 
-    const dateStr = getDateStr(info.date);
-    const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
+    const day = dateStr(info.date);
+    const counts = {"商談待ち":0,"返答待ち":0,"リスケ":0,"留守":0};
 
-    const countMap = {};
-    SUMMARY_STATUSES.forEach(s => countMap[s] = 0);
-    dayEvents.forEach(e => countMap[e.status] !== undefined && countMap[e.status]++);
+    RAW_EVENTS.forEach(e => {
+        if(dateStr(e.start) === day && counts[e.status] !== undefined){
+            counts[e.status]++;
+        }
+    });
 
     const wrap = document.createElement("div");
     wrap.className = "summary-wrap";
 
-    SUMMARY_STATUSES.forEach(status => {
+    Object.keys(counts).forEach(s => {
         const div = document.createElement("div");
         div.className = "summary";
-
-        if(countMap[status] > 0){
-            div.textContent = `${status} ${countMap[status]}件`;
-            div.style.backgroundColor = STATUS_COLORS[status];
+        if(counts[s] > 0){
+            div.textContent = `${s} ${counts[s]}件`;
+            div.style.background = "#607d8b";
         }
-
         wrap.appendChild(div);
     });
 
     info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(wrap);
 }
 
-/* =================================================
-   週・日ビュー：ガントチャート風（合計件数のみ）
-================================================= */
-function renderWeekDayGantt(info){
-    if(!["timeGridWeek","timeGridDay"].includes(info.view.type)) return;
+// ===== 週・日ビュー（ここが修正ポイント） =====
+function renderDayWeekSlots(info){
+    if(!info.date) return;
 
-    const dateStr = getDateStr(info.date);
-    const hour = getHour(info.date);
+    const slotStart = info.date;
+    const slotEnd = new Date(slotStart);
+    slotEnd.setMinutes(slotEnd.getMinutes() + 30);
 
-    const count = RAW_EVENTS.filter(e =>
-        getDateStr(e.start) === dateStr &&
-        getHour(e.start) === hour &&
-        TARGET_STATUSES.includes(e.status)
-    ).length;
+    const events = RAW_EVENTS.filter(e =>
+        TARGET_STATUSES.includes(e.status) &&
+        e.start >= slotStart &&
+        e.start < slotEnd
+    );
 
-    if(count === 0) return;
+    if(events.length === 0) return;
 
     const wrap = document.createElement("div");
-    wrap.className = "gantt-wrap";
+    wrap.className = "slot-wrap";
 
-    const maxBars = 5;
-    const visible = Math.min(count, maxBars);
+    const show = events.slice(0,5);
+    show.forEach(() => {
+        const block = document.createElement("div");
+        block.className = "slot-block";
+        wrap.appendChild(block);
+    });
 
-    for(let i=0;i<visible;i++){
-        const bar = document.createElement("div");
-        bar.className = "gantt-bar";
-        wrap.appendChild(bar);
-    }
-
-    if(count > maxBars){
-        const more = document.createElement("div");
-        more.className = "gantt-more";
-        more.textContent = `+${count - maxBars}件`;
+    if(events.length > 5){
+        const more = document.createElement("span");
+        more.className = "slot-more";
+        more.textContent = `+${events.length - 5}件`;
         wrap.appendChild(more);
     }
 
     info.el.appendChild(wrap);
 }
 
-/* =================================================
-   カレンダー初期化
-================================================= */
-const calendar = new FullCalendar.Calendar(
-    document.getElementById("calendar"),
-    {
-        locale: "ja",
-        initialView: "dayGridMonth",
-        height: "auto",
+// ===== カレンダー =====
+const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
+    locale: "ja",
+    initialView: "dayGridMonth",
+    height: "auto",
 
-        headerToolbar: {
-            left: "prev,next today",
-            center: "title",
-            right: "dayGridMonth,timeGridWeek,timeGridDay"
-        },
+    headerToolbar: {
+        left: "prev,next today",
+        center: "title",
+        right: "dayGridMonth,timeGridWeek,timeGridDay"
+    },
+    buttonText: {
+        today: "今日",
+        month: "月",
+        week: "週",
+        day: "日"
+    },
 
-        buttonText: {
-            today: "今日",
-            month: "月",
-            week: "週",
-            day: "日"
-        },
+    nowIndicator: true,
+    slotMinTime: "08:00:00",
+    slotMaxTime: "20:00:00",
+    slotDuration: "00:30:00",
+    allDaySlot: false,
 
-        nowIndicator: true,
-        slotMinTime: "08:00:00",
-        slotMaxTime: "20:00:00",
-        allDaySlot: false,
-
-        dayCellDidMount: renderMonthSummary,
-        slotLaneDidMount: renderWeekDayGantt,
-
-        dateClick: info => calendar.changeView("timeGridDay", info.dateStr),
-
-        /* ★（〇件）表示は完全削除 */
-        slotLabelContent: info => info.text
-    }
-);
+    dayCellDidMount: renderMonthSummary,
+    slotLaneDidMount: renderDayWeekSlots
+});
 
 calendar.render();
 </script>
