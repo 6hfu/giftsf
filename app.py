@@ -187,30 +187,32 @@ def get_schedule_records():
     result = sf.query_all(soql)
     records = []
     for r in result["records"]:
-        if r.get("Field97__c") and r.get("Field334__c") not in ["成約","NG"]:
+        status = r.get("Field334__c")
+        next_call = r.get("Field97__c")
+        if next_call and status not in ["成約","NG"]:
+            # 1日ずれ防止 → ローカル時間に変換
+            dt = datetime.fromisoformat(next_call.replace("Z",""))
             records.append({
                 "id": r["Id"],
                 "account": r["Name"],
-                "status": r.get("Field334__c"),
-                "next_call": r.get("Field97__c")
+                "status": status,
+                "next_call": dt.strftime("%Y-%m-%dT%H:%M:%S")
             })
     return records
 
 def round_time_30min(dt):
     if isinstance(dt, str):
-        try:
-            dt = datetime.fromisoformat(dt.replace("Z",""))
-        except ValueError:
-            dt = datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
+        dt = datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S")
     minute = dt.minute
     if minute < 15:
         minute = 0
     elif minute < 45:
         minute = 30
     else:
-        dt = dt.replace(hour=dt.hour + 1)
+        dt = dt.replace(hour=dt.hour+1)
         minute = 0
     return dt.replace(minute=minute, second=0, microsecond=0)
+
 
 
 
@@ -1011,9 +1013,9 @@ def schedule():
     records = get_schedule_records()
     events = []
     for r in records:
-        rounded_time = round_time_30min(r["next_call"])
+        rounded = round_time_30min(r["next_call"])
         events.append({
-            "start": rounded_time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "start": rounded.strftime("%Y-%m-%dT%H:%M:%S"),
             "status": r["status"],
             "record_id": r["id"]
         })
