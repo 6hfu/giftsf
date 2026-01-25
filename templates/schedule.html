@@ -17,7 +17,7 @@ body {
 .fc-day-sun { background: rgba(244, 67, 54, 0.08); }
 .fc-day-sat { background: rgba(33, 150, 243, 0.08); }
 
-/* ===== 月ビューのステータスラベル（そのまま） ===== */
+/* ===== 月ビューのステータスラベル ===== */
 .summary-wrap {
     display: flex;
     flex-direction: column;
@@ -41,12 +41,13 @@ body {
     box-sizing: border-box;
 }
 
-/* ===== 週・日ビューのガントバー ===== */
-.gantt-bar {
-    background: #2196F3;
-    border-radius: 4px;
-    height: 100%;
-    opacity: 0.7;
+/* ===== 週・日ビューのガントバー風イベント ===== */
+.gantt-bar-event {
+    background-color: #2196F3 !important;
+    border-radius: 4px !important;
+    height: 14px !important;  /* 小さくして縦に複数並べられる */
+    margin-top: 2px;
+    opacity: 0.8;
 }
 </style>
 </head>
@@ -65,11 +66,11 @@ const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
     return { ...e, start: dt };
 });
 
-// ===== util =====
+// util
 const getDateStr = d => d.toISOString().split("T")[0];
 const getHour = d => d.getHours();
 
-// ===== 月ビューのステータス表示（そのまま） =====
+// ===== 月ビューのステータス表示 =====
 function renderMonthSummary(info){
     if(info.view.type !== "dayGridMonth") return;
 
@@ -77,8 +78,8 @@ function renderMonthSummary(info){
     const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
 
     const countMap = {};
-    ["商談待ち","返答待ち","リスケ","留守"].forEach(s => countMap[s]=0);
-    dayEvents.forEach(e => countMap[e.status] !== undefined && countMap[e.status]++);
+    ["商談待ち","返答待ち","リスケ","留守"].forEach(s=>countMap[s]=0);
+    dayEvents.forEach(e=>countMap[e.status]!==undefined && countMap[e.status]++);
 
     const wrap = document.createElement("div");
     wrap.className = "summary-wrap";
@@ -103,37 +104,39 @@ function renderMonthSummary(info){
     info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(wrap);
 }
 
-// ===== 週・日ビュー用：背景イベント生成 =====
-function generateBackgroundEvents(){
+// ===== 週・日ビュー用：ガントバーイベント生成 =====
+function generateGanttEvents(){
     const eventsMap = {};
     RAW_EVENTS.forEach(e=>{
-        const key = getDateStr(e.start)+"_"+getHour(e.start);
-        if(!eventsMap[key]) eventsMap[key]=0;
-        eventsMap[key]++;
+        const key = getDateStr(e.start) + "_" + getHour(e.start);
+        if(!eventsMap[key]) eventsMap[key]=[];
+        eventsMap[key].push(e);
     });
 
     const fcEvents = [];
-    const maxBars = 5;
+    const maxBarsPerHour = 5;
+
     for(const key in eventsMap){
         const [dateStr,hourStr] = key.split("_");
         const hour = parseInt(hourStr);
-        const count = eventsMap[key];
-        const visible = Math.min(count, maxBars);
-        for(let i=0;i<visible;i++){
-            const start = new Date(`${dateStr}T${String(hour).padStart(2,'0')}:00:00`);
+        const eventsInHour = eventsMap[key].slice(0, maxBarsPerHour); // 最大5件
+
+        eventsInHour.forEach((e,i)=>{
+            const start = new Date(dateStr + "T" + String(hour).padStart(2,"0") + ":00:00");
             const end = new Date(start.getTime() + 30*60*1000); // 30分幅
             fcEvents.push({
                 start: start,
                 end: end,
-                display: 'background',
-                className: 'gantt-bar'
+                allDay: false,
+                display: 'block',
+                className: 'gantt-bar-event'
             });
-        }
+        });
     }
     return fcEvents;
 }
 
-const FC_EVENTS = generateBackgroundEvents();
+const FC_EVENTS = generateGanttEvents();
 
 // ===== カレンダー初期化 =====
 const calendar = new FullCalendar.Calendar(
@@ -162,7 +165,7 @@ const calendar = new FullCalendar.Calendar(
 
         dayCellDidMount: renderMonthSummary,
 
-        events: FC_EVENTS, // 背景イベントとして週・日ビューに描画
+        events: FC_EVENTS,  // 週・日ビューでバー表示
 
         dateClick: info => calendar.changeView("timeGridDay", info.dateStr),
 
