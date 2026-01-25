@@ -9,26 +9,24 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
-/* --- 月ビューステータス --- */
+/* --- 月ビューのステータス --- */
 .month-summary {
     display: flex;
-    flex-direction: column; /* 縦並び */
+    flex-direction: column;
     justify-content: space-between;
-    font-size: 12px;
-    height: 80px; /* 縦4ステータス分の高さ固定 */
+    height: 80px; /* 4ステータス分 */
     margin-top: 2px;
 }
 .summaryBox {
-    height: 20px;
-    line-height: 20px;
+    height: 18px;
+    line-height: 18px;
     text-align: center;
     border-radius: 4px;
     color: #fff;
     font-weight: bold;
-    margin-bottom: 2px;
     font-size: 12px;
 }
-/* サンプル色、status名に合わせてカスタマイズ可能 */
+/* ステータス色（status名に合わせてカスタマイズ可） */
 .summaryDone { background-color: #4caf50; }
 .summaryPending { background-color: #ff9800; }
 .summaryInProgress { background-color: #2196f3; }
@@ -40,15 +38,16 @@
 }
 .slot-label {
     font-size: 12px;
-    margin: 2px 0;
+    margin: 1px 0;
     padding: 2px 4px;
     border-radius: 3px;
     color: #fff;
+    text-align: center;
 }
-.slot-labelDone { background: #4caf50; }
-.slot-labelPending { background: #ff9800; }
-.slot-labelInProgress { background: #2196f3; }
-.slot-labelCancelled { background: #f44336; }
+.slot-labelDone { background-color: #4caf50; }
+.slot-labelPending { background-color: #ff9800; }
+.slot-labelInProgress { background-color: #2196f3; }
+.slot-labelCancelled { background-color: #f44336; }
 </style>
 </head>
 <body>
@@ -56,7 +55,7 @@
 <div id="calendar"></div>
 
 <script>
-// サーバーから渡されるイベント配列
+// サーバーから渡されるイベント配列（Flask等から）
 const RAW_EVENTS_ORIG = {{ events | tojson }};
 
 // ----------------- マイナス6時間補正 -----------------
@@ -75,23 +74,22 @@ function renderMonthSummary(calendar, info){
     if(calendar.view.type !== "dayGridMonth") return;
     const dateStr = info.date.toISOString().split("T")[0];
     const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
-    if(dayEvents.length === 0) return; // 0件なら非表示
+    if(dayEvents.length === 0) return; // 0件は非表示
 
-    // サーバーから渡されるステータスをそのまま使用
-    const statuses = [...new Set(dayEvents.map(e=>e.status))]; 
-    if(statuses.length === 0) return;
-
+    // ステータス4つ分をあらかじめ確保
+    const allStatuses = ["Done","Pending","InProgress","Cancelled"];
     const grouped = {};
-    statuses.forEach(s => grouped[s] = 0);
+    allStatuses.forEach(s => grouped[s] = 0);
     dayEvents.forEach(e => { if(e.status) grouped[e.status]++; });
 
     const wrap = document.createElement("div");
     wrap.className = "month-summary";
 
-    statuses.forEach(s => {
+    allStatuses.forEach(s => {
+        if(grouped[s] === 0) return; // 0件は表示しない
         const div = document.createElement("div");
-        div.className = "summaryBox summary" + s.replace(/\s/g,''); // class名用
-        div.textContent = s + " " + grouped[s];
+        div.className = "summaryBox summary"+s.replace(/\s/g,'');
+        div.textContent = s + " " + grouped[s] + "件";
         wrap.appendChild(div);
     });
 
@@ -101,9 +99,7 @@ function renderMonthSummary(calendar, info){
 
 // ----------------- 日・週ビュー縦5枠 -----------------
 function renderDayWeekSlots(info){
-    const viewType = info.view.type;
-    if(!["timeGridDay","timeGridWeek"].includes(viewType)) return;
-
+    if(!["timeGridDay","timeGridWeek"].includes(info.view.type)) return;
     const dateStr = info.date.toISOString().split("T")[0];
     const hour = info.date.getHours();
     const hourEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr && parseInt(getHourStr(e.start)) === hour);
@@ -117,11 +113,11 @@ function renderDayWeekSlots(info){
     wrap.style.flexDirection = "column";
     wrap.style.height = "100%";
 
-    displayEvents.forEach((e,i) => {
+    displayEvents.forEach(e => {
         const div = document.createElement("div");
-        div.className = "slot-label slot-label" + e.status.replace(/\s/g,"");
+        div.className = "slot-label slot-label" + e.status.replace(/\s/g,'');
         div.textContent = e.status;
-        div.style.flex = "1"; // 縦に均等分割
+        div.style.flex = "1"; // 縦5分割
         wrap.appendChild(div);
     });
 
