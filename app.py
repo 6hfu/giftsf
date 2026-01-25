@@ -11,6 +11,7 @@ import re
 from flask import jsonify, render_template
 import json
 import pandas as pd
+from datetime import timedelta
 
 
 # 環境変数読み込み
@@ -194,6 +195,17 @@ def get_schedule_records():
             "next_call": r.get("Field97__c")
         })
     return records
+
+
+def round_time_30min(dt):
+    minute = dt.minute
+    if minute < 15:
+        return dt.replace(minute=0, second=0, microsecond=0)
+    elif minute < 45:
+        return dt.replace(minute=30, second=0, microsecond=0)
+    else:
+        return (dt + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+
 
 
 @app.route('/')
@@ -992,12 +1004,19 @@ def update_record():
 def schedule():
     records = get_schedule_records()
     events = []
+
     for r in records:
+        if not r["next_call"] or not r["status"]:
+            continue
+
+        rounded_time = round_time_30min(r["next_call"])
+
         events.append({
-            "title": r['account'],
-            "start": r["next_call"],
-            "color": status_color(r["status"]),
+            "start": rounded_time.isoformat(),
+            "status": r["status"],          # ← 集計用
             "record_id": r["id"]
         })
+
     return render_template("schedule.html", events=events)
+
 
