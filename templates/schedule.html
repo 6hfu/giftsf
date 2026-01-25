@@ -18,7 +18,7 @@ body { font-family: system-ui, -apple-system; background:#f4f6f8; margin:0; padd
 .summary返答待ち  { background:#03A9F4; color:#fff; }
 .summary商談待ち  { background:#2196F3; color:#fff; }
 
-/* 日・週ビューの縦5枠ラベル */
+/* 日・週ビュー縦5枠ラベル */
 .slot-label { font-size:14px; padding:6px 8px; border-radius:6px; margin:2px 0; text-align:center; color:#fff; }
 .slot-label留守      { background:#FFC107; color:#000; }
 .slot-labelリスケ    { background:#FF9800; color:#fff; }
@@ -32,11 +32,17 @@ body { font-family: system-ui, -apple-system; background:#f4f6f8; margin:0; padd
 <script>
 const RAW_EVENTS = {{ events | tojson }};
 
-// ----------------- 月ビューサマリ（ステータス件数） -----------------
+// 日付文字列だけ取得
+function getDateStr(iso){
+    return iso.split("T")[0];
+}
+
+// ----------------- 月ビューサマリ -----------------
 function renderMonthSummary(calendar, info){
     if(calendar.view.type !== "dayGridMonth") return;
+
     const dateStr = info.date.toISOString().split("T")[0];
-    const dayEvents = RAW_EVENTS.filter(e => e.start.startsWith(dateStr));
+    const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
     if(dayEvents.length===0) return;
 
     const grouped = {};
@@ -54,19 +60,19 @@ function renderMonthSummary(calendar, info){
     target?.appendChild(wrap);
 }
 
-// ----------------- 日・週ビュー 縦5枠生成 -----------------
+// ----------------- 日・週ビュー縦5枠 -----------------
 function renderDayWeekSlots(info){
     if(!["timeGridDay","timeGridWeek"].includes(info.view.type)) return;
 
     const dateStr = info.date.toISOString().split("T")[0];
     const hour = info.date.getHours();
-    const hourEvents = RAW_EVENTS.filter(e=>{
-        const d = new Date(e.start);
-        return d.getHours()===hour && d.toISOString().startsWith(dateStr);
+
+    const hourEvents = RAW_EVENTS.filter(e => {
+        const dHour = parseInt(e.start.split("T")[1].split(":")[0]);
+        return getDateStr(e.start) === dateStr && dHour === hour;
     });
     if(hourEvents.length===0) return;
 
-    // 縦5枠に圧縮
     const maxSlots = 5;
     const overflow = hourEvents.length > maxSlots ? hourEvents.length - maxSlots + 1 : 0;
     const displayEvents = hourEvents.slice(0,maxSlots);
@@ -93,17 +99,16 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
     slotMaxTime: "20:00:00",
     allDaySlot: false,
 
-    dayCellDidMount: function(info){ renderMonthSummary(calendar, info); },
-    slotLaneDidMount: function(info){ renderDayWeekSlots(info); },
+    dayCellDidMount: info=>renderMonthSummary(calendar, info),
+    slotLaneContent: info=>renderDayWeekSlots(info),
 
-    dateClick: function(info){ calendar.changeView("timeGridDay", info.dateStr); },
+    dateClick: info=>calendar.changeView("timeGridDay", info.dateStr),
 
-    // 時間ラベル横に件数表示
-    slotLabelContent: function(info){
+    slotLabelContent: info=>{
         const dateStr = calendar.getDate().toISOString().split("T")[0];
         const hourEvents = RAW_EVENTS.filter(e=>{
-            const d = new Date(e.start);
-            return d.getHours() === info.date.getHours() && d.toISOString().startsWith(dateStr);
+            const dHour = parseInt(e.start.split("T")[1].split(":")[0]);
+            return getDateStr(e.start) === dateStr && dHour === info.date.getHours();
         });
         return info.text + " (" + hourEvents.length + ")";
     }
