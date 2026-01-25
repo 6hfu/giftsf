@@ -9,14 +9,21 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
-/* 月ビューサマリ */
+/* 月ビューサマリ（縦4行固定） */
+.summary-wrap {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* 縦に均等配置 */
+    height: 80px; /* 4行分の高さを固定 */
+    margin-top: 2px;
+}
+
 .summary {
     font-size: 13px;
-    margin: 2px 0;
-    padding: 2px 6px;
+    padding: 3px 6px;
     border-radius: 4px;
     color: #fff;
-    display: inline-block;
+    display: block;
 }
 
 /* 日・週ビュースロット */
@@ -26,13 +33,7 @@
     padding: 3px 5px;
     border-radius: 4px;
     color: #fff;
-    margin-bottom: 2px;
     display: block;
-}
-
-/* 月のセル内まとめラップ */
-.fc-daygrid-day-frame > div.summary-wrap {
-    margin-top: 2px;
 }
 
 /* ホバー時 */
@@ -50,7 +51,7 @@
 // サーバーから渡されるイベント
 const RAW_EVENTS_ORIG = {{ events | tojson }};
 
-// ステータスごとの色制御をHTML/JS側に統一
+// ステータスごとの色
 const STATUS_COLORS = {
     "成約": "#4CAF50",
     "NG": "#9E9E9E",
@@ -60,7 +61,10 @@ const STATUS_COLORS = {
     "商談待ち": "#2196F3"
 };
 
-// UTC補正 12時間 → 6時間
+// 月サマリで表示するステータス順（縦固定）
+const SUMMARY_STATUSES = ["留守", "リスケ", "返答待ち", "商談待ち"];
+
+// UTC補正 12時間→6時間
 const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
     const dt = new Date(e.start);
     dt.setHours(dt.getHours() - 6);
@@ -71,27 +75,28 @@ const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
 function getDateStr(dt){ return dt.toISOString().split("T")[0]; }
 function getHourStr(dt){ return dt.toISOString().split("T")[1].split(":")[0]; }
 
-// 月ビューサマリ
+// 月ビューサマリ（縦4行固定）
 function renderMonthSummary(info){
     if(info.view.type !== "dayGridMonth") return;
 
     const dateStr = info.date.toISOString().split("T")[0];
     const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
-    if(dayEvents.length === 0) return;
 
+    // ステータスごとの件数
     const grouped = {};
-    dayEvents.forEach(e => { if(e.status) grouped[e.status] = (grouped[e.status]||0)+1; });
+    SUMMARY_STATUSES.forEach(s => grouped[s] = 0); // 0件でも表示
+    dayEvents.forEach(e => { if(grouped.hasOwnProperty(e.status)) grouped[e.status] += 1; });
 
     const wrap = document.createElement("div");
     wrap.className = "summary-wrap";
 
-    for(const status of Object.keys(grouped)){
+    SUMMARY_STATUSES.forEach(status => {
         const div = document.createElement("div");
         div.className = "summary";
         div.textContent = `${status} ${grouped[status]}件`;
         div.style.backgroundColor = STATUS_COLORS[status] || "#BDBDBD";
         wrap.appendChild(div);
-    }
+    });
 
     const target = info.el.querySelector(".fc-daygrid-day-frame");
     if(target) target.appendChild(wrap);
@@ -140,7 +145,6 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
     dateClick: info => calendar.changeView("timeGridDay", info.dateStr),
 
     viewDidMount: info => {
-        // 月・週・日切替時に最新状態を反映
         renderMonthSummary(info);
         renderDayWeekSlots(info);
     },
