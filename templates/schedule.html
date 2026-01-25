@@ -4,141 +4,173 @@
 <meta charset="UTF-8">
 <title>商談スケジュール</title>
 
-<!-- FullCalendar -->
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/resource-timegrid@6.1.11/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/resource-common@6.1.11/index.global.min.js"></script>
-
-<!-- Bootstrap -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <style>
-body { font-family: 'Roboto', sans-serif; }
-.fc-header-toolbar { margin-bottom: 10px; }
-.fc-toolbar-title { font-weight: 500; font-size: 1.3rem; }
-.fc-col-header-cell { background-color: #f1f3f4; color: #202124; font-weight: 500; }
-.fc-daygrid-day { position: relative; background-color: #fff; }
-.fc-daygrid-day:hover { background-color: #e8f0fe; cursor: pointer; }
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont;
+    background: #f5f5f5;
+}
 
-.status-list { font-size: 0.75rem; margin: 2px 0 0 0; padding: 0; list-style: none; }
-.status-list li { color: white; padding: 2px 4px; margin-bottom: 1px; border-radius: 4px; display: inline-block; }
+#calendar {
+    background: #fff;
+    padding: 10px;
+    border-radius: 12px;
+}
 
-.fc-event, .fc-timegrid-event { border: none; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.15); padding: 4px 6px; font-size: 0.85rem; color: white; }
+/* ===== MONTH ===== */
+.month-summary {
+    font-size: 11px;
+    margin-top: 4px;
+}
+.month-summary div {
+    color: #fff;
+    padding: 2px 4px;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+}
 
-.fc-col-header-cell-cushion { font-size: 0.85rem; }
-.fc-now-indicator { background-color: #d93025 !important; }
+/* ===== WEEK ===== */
+.week-summary {
+    font-size: 11px;
+}
+.week-summary div {
+    color: #fff;
+    border-radius: 4px;
+    padding: 2px 4px;
+    margin-bottom: 2px;
+}
+
+/* ===== DAY (Gantt) ===== */
+.fc-timegrid-event {
+    border-radius: 6px;
+    font-size: 12px;
+    padding: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.fc-timegrid-event .fc-event-title {
+    font-weight: 600;
+}
 </style>
 </head>
-<body class="bg-light">
 
-<div class="container mt-4">
-    <h3 class="mb-3 text-center">商談スケジュール</h3>
-    <div id="calendar"></div>
-</div>
+<body>
+<div id="calendar"></div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const calendarEl = document.getElementById('calendar');
+const EVENTS = {{ events | tojson }};
 
-    const events = {{ events|tojson }};
+const STATUS_COLORS = {
+    "成約": "#4CAF50",
+    "NG": "#9E9E9E",
+    "留守": "#FFC107",
+    "リスケ": "#FF9800",
+    "返答待ち": "#03A9F4",
+    "商談待ち": "#2196F3"
+};
 
-    const calendar = new FullCalendar.Calendar(calendarEl, {
-        locale: 'ja',
-        initialView: 'dayGridMonth',
-        height: 'auto',
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,resourceTimeGridDay'
-        },
-        events: events,
+const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
+    locale: "ja",
+    initialView: "dayGridMonth",
+    height: "auto",
+    headerToolbar: {
+        left: "prev,next today",
+        center: "title",
+        right: "dayGridMonth,timeGridWeek,timeGridDay"
+    },
+    events: EVENTS,
 
-        eventContent: function(arg){
-            const statusColors = {
-                "成約": "#4CAF50",
-                "NG": "#9E9E9E",
-                "留守": "#FFC107",
-                "リスケ": "#FF9800",
-                "返答待ち": "#03A9F4",
-                "商談待ち": "#2196F3"
-            };
+    /* ===== 月 ===== */
+    dayCellDidMount(info) {
+        if (calendar.view.type !== "dayGridMonth") return;
 
-            // 月ビュー
-            if(arg.view.type === 'dayGridMonth'){
-                const dateStr = arg.event.startStr.split('T')[0];
-                const dayEvents = calendar.getEvents().filter(ev => ev.startStr.split('T')[0] === dateStr);
+        const dateStr = info.date.toISOString().split("T")[0];
+        const dayEvents = EVENTS.filter(e => e.start.startsWith(dateStr));
 
-                if(arg.event._rendered) return { html: '' };
-                dayEvents.forEach(ev => ev._rendered = true);
+        if (dayEvents.length === 0) return;
 
-                // ステータス別件数集計
-                const counts = {};
-                dayEvents.forEach(ev => {
-                    const s = ev.extendedProps.status || '未定';
-                    counts[s] = (counts[s] || 0) + 1;
-                });
+        const counts = {};
+        dayEvents.forEach(e => {
+            counts[e.status] = (counts[e.status] || 0) + 1;
+        });
 
-                let html = '<ul class="status-list">';
-                for(let s in counts){
-                    html += `<li style="background-color:${statusColors[s]||'#BDBDBD'}">${s}: ${counts[s]}件</li>`;
-                }
-                html += '</ul>';
-                return { html: html };
-            }
+        const wrap = document.createElement("div");
+        wrap.className = "month-summary";
 
-            // 週ビュー
-            else if(arg.view.type === 'timeGridWeek'){
-                const startHour = arg.event.start.getHours();
-                const endHour = arg.event.end ? arg.event.end.getHours() : startHour;
-                const slotEvents = calendar.getEvents().filter(ev => {
-                    const evHour = ev.start.getHours();
-                    return ev.startStr.split('T')[0] === arg.event.startStr.split('T')[0] && evHour === startHour;
-                });
+        Object.keys(counts).forEach(s => {
+            const div = document.createElement("div");
+            div.style.background = STATUS_COLORS[s] || "#999";
+            div.textContent = `${s} ${counts[s]}`;
+            wrap.appendChild(div);
+        });
 
-                // ステータス別件数
-                const counts = {};
-                slotEvents.forEach(ev => {
-                    const s = ev.extendedProps.status || '未定';
-                    counts[s] = (counts[s] || 0) + 1;
-                });
+        info.el.querySelector(".fc-daygrid-day-events").appendChild(wrap);
+    },
 
-                let html = '';
-                for(let s in counts){
-                    let displayCount = counts[s];
-                    if(displayCount > 3){
-                        html += `<div style="background-color:${statusColors[s]}; padding:2px 4px; border-radius:6px; margin-bottom:1px;">${s}: 3件 +${displayCount-3}</div>`;
-                    } else {
-                        html += `<div style="background-color:${statusColors[s]}; padding:2px 4px; border-radius:6px; margin-bottom:1px;">${s}: ${displayCount}件</div>`;
-                    }
-                }
-                return { html: html };
-            }
+    /* ===== 週 ===== */
+    eventContent(arg) {
+        if (arg.view.type !== "timeGridWeek") return;
 
-            // 日ビュー
-            else if(arg.view.type === 'resourceTimeGridDay'){
-                const status = arg.event.extendedProps.status || '未定';
-                const color = arg.event.color || statusColors[status] || '#BDBDBD';
-                return { html: `<div style="background-color:${color}; padding:2px 4px; border-radius:6px;">${status}</div>` };
-            }
-        },
+        const startHour = arg.event.start.getHours();
+        const dateStr = arg.event.startStr.split("T")[0];
 
-        // 日クリックで日ビューに遷移
-        dateClick: function(info){
-            calendar.changeView('resourceTimeGridDay', info.dateStr);
-        },
+        const slotEvents = EVENTS.filter(e => {
+            const d = new Date(e.start);
+            return d.toISOString().startsWith(dateStr) && d.getHours() === startHour;
+        });
 
-        nowIndicator: true,
-        dayMaxEventRows: true,
-        slotMinTime: "08:00:00",
-        slotMaxTime: "20:00:00"
-    });
+        const counts = {};
+        slotEvents.forEach(e => {
+            counts[e.status] = (counts[e.status] || 0) + 1;
+        });
 
-    calendar.render();
+        let html = `<div class="week-summary">`;
+        let shown = 0;
+        let total = Object.values(counts).reduce((a,b)=>a+b,0);
+
+        for (let s in counts) {
+            if (shown >= 3) break;
+            html += `<div style="background:${STATUS_COLORS[s]}">${s} ${counts[s]}</div>`;
+            shown++;
+        }
+
+        if (total > 3) {
+            html += `<div style="background:#666">+${total-3}</div>`;
+        }
+
+        html += `</div>`;
+        return { html };
+    },
+
+    /* ===== 日（ガント） ===== */
+    eventDidMount(info) {
+        if (info.view.type !== "timeGridDay") return;
+
+        const sameTime = calendar.getEvents().filter(e =>
+            e.start.getTime() === info.event.start.getTime()
+        );
+
+        const index = sameTime.findIndex(e => e.id === info.event.id);
+        const width = 100 / sameTime.length;
+
+        info.el.style.width = `calc(${width}% - 2px)`;
+        info.el.style.left = `${width * index}%`;
+    },
+
+    dateClick(info) {
+        calendar.changeView("timeGridDay", info.dateStr);
+    },
+
+    nowIndicator: true,
+    slotMinTime: "08:00:00",
+    slotMaxTime: "20:00:00"
 });
+
+calendar.render();
 </script>
-
-
 </body>
 </html>
