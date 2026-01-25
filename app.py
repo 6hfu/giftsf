@@ -187,7 +187,7 @@ def get_schedule_records():
     result = sf.query_all(soql)
     records = []
     for r in result["records"]:
-        if r.get("Field97__c") and r.get("Field334__c"):
+        if r.get("Field97__c") and r.get("Field334__c") not in ["成約","NG"]:
             records.append({
                 "id": r["Id"],
                 "account": r["Name"],
@@ -197,10 +197,9 @@ def get_schedule_records():
     return records
 
 def round_time_30min(dt):
-    # strならdatetimeに変換
     if isinstance(dt, str):
         try:
-            dt = datetime.fromisoformat(dt.replace("Z", ""))
+            dt = datetime.fromisoformat(dt.replace("Z",""))
         except ValueError:
             dt = datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
     minute = dt.minute
@@ -212,6 +211,8 @@ def round_time_30min(dt):
         dt = dt.replace(hour=dt.hour + 1)
         minute = 0
     return dt.replace(minute=minute, second=0, microsecond=0)
+
+
 
 @app.route('/')
 @login_required
@@ -1009,13 +1010,11 @@ def update_record():
 def schedule():
     records = get_schedule_records()
     events = []
-
     for r in records:
         rounded_time = round_time_30min(r["next_call"])
         events.append({
-            "start": rounded_time.strftime("%Y-%m-%dT%H:%M:%S"),  # Zなしでローカル時間
+            "start": rounded_time.strftime("%Y-%m-%dT%H:%M:%S"),
             "status": r["status"],
             "record_id": r["id"]
         })
-
     return render_template("schedule.html", events=events)
