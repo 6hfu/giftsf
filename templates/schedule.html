@@ -128,7 +128,7 @@ function renderMonthSummary(info){
     info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(wrap);
 }
 
-// ===== 週・日ビュー：件数バー風表示 =====
+// ===== 週・日ビュー：30分単位の件数バー =====
 function renderWeekDayCountBars(calendar) {
     const view = calendar.view;
     if (!["timeGridWeek", "timeGridDay"].includes(view.type)) return;
@@ -136,33 +136,34 @@ function renderWeekDayCountBars(calendar) {
     // まず既存のバーを消す
     document.querySelectorAll(".count-wrap").forEach(e => e.remove());
 
-    // 表示中のスロットを取得
+    // 全スロットを取得
     const slots = document.querySelectorAll(".fc-timegrid-slot");
+
     slots.forEach(slot => {
         const slotTimeEl = slot.querySelector(".fc-timegrid-slot-label");
-        if(!slotTimeEl) return;
+        if (!slotTimeEl) return;
 
-        // slotの時間を取得
-        const timeText = slotTimeEl.textContent; // 例 "08:00"
-        const [hourStr, minStr] = timeText.split(":");
+        // 時間テキストを取得（例 "08:00"）
+        const [hourStr, minStr] = slotTimeEl.textContent.split(":");
         const hour = parseInt(hourStr);
         const minutes = parseInt(minStr);
 
-        // slotのDOMの親 row を取得
+        // スロットのDOMにイベント追加する部分
         const slotRow = slot.querySelector(".fc-timegrid-slot-events");
-        if(!slotRow) return;
+        if (!slotRow) return;
 
-        const dateStr = calendar.view.currentStart.toISOString().split("T")[0];
+        // スロットの「日付」を取得
+        const slotDateStr = calendar.view.currentStart.toISOString().split("T")[0];
 
-        // このスロットに入るイベント数
+        // このスロットに該当するイベント数（RAW_EVENTS をそのまま使用）
         const count = RAW_EVENTS.filter(e => {
             const evDate = new Date(e.start);
-            return getDateStr(evDate) === dateStr &&
+            return getDateStr(evDate) === slotDateStr &&
                    evDate.getHours() === hour &&
                    evDate.getMinutes() === minutes;
         }).length;
 
-        if(count === 0) return;
+        if (count === 0) return;
 
         const wrap = document.createElement("div");
         wrap.className = "count-wrap";
@@ -170,15 +171,18 @@ function renderWeekDayCountBars(calendar) {
         const maxBars = 5;
         const visible = Math.min(count, maxBars);
 
-        for(let i=0;i<visible;i++){
+        for (let i = 0; i < visible; i++) {
             const bar = document.createElement("div");
             bar.className = "count-bar";
-            const intensity = Math.min(1, count/10);
-            bar.style.backgroundColor = `rgba(33, 150, 243, ${0.3 + 0.7*intensity})`;
+
+            // 件数に応じて色を濃くする
+            const intensity = Math.min(1, count / 10); // 10件以上は最大濃度
+            bar.style.backgroundColor = `rgba(33, 150, 243, ${0.3 + 0.7 * intensity})`;
+
             wrap.appendChild(bar);
         }
 
-        if(count > maxBars){
+        if (count > maxBars) {
             const more = document.createElement("div");
             more.className = "count-more";
             more.textContent = `+${count - maxBars}件`;
@@ -189,7 +193,7 @@ function renderWeekDayCountBars(calendar) {
     });
 }
 
-// カレンダー初期化後に描画
+// ===== カレンダー初期化 =====
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
     locale: "ja",
     initialView: "dayGridMonth",
@@ -211,7 +215,7 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
 
 calendar.render();
 
-// 週/日ビューに切り替えた時に描画
+// 週/日ビューに切り替えた時や日付変更時に描画
 calendar.on("datesSet", () => renderWeekDayCountBars(calendar));
 
 </script>
