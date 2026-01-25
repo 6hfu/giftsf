@@ -9,45 +9,37 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
-/* --- 月ビューのステータス --- */
-.month-summary {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 80px; /* 4ステータス分 */
-    margin-top: 2px;
-}
-.summaryBox {
-    height: 18px;
-    line-height: 18px;
-    text-align: center;
+/* 月ビューサマリ */
+.summary {
+    font-size: 13px;
+    margin: 2px 0;
+    padding: 2px 6px;
     border-radius: 4px;
     color: #fff;
-    font-weight: bold;
-    font-size: 12px;
+    display: inline-block;
 }
-/* ステータス色（status名に合わせてカスタマイズ可） */
-.summaryDone { background-color: #4caf50; }
-.summaryPending { background-color: #ff9800; }
-.summaryInProgress { background-color: #2196f3; }
-.summaryCancelled { background-color: #f44336; }
 
-/* --- 日・週ビュー枠調整 --- */
-.fc-timegrid-slot {
-    height: 50px; /* 各時間枠を縦に大きく */
-}
+/* 日・週ビュースロット */
 .slot-label {
     font-size: 12px;
     margin: 1px 0;
-    padding: 2px 4px;
-    border-radius: 3px;
+    padding: 3px 5px;
+    border-radius: 4px;
     color: #fff;
-    text-align: center;
+    margin-bottom: 2px;
+    display: block;
 }
-.slot-labelDone { background-color: #4caf50; }
-.slot-labelPending { background-color: #ff9800; }
-.slot-labelInProgress { background-color: #2196f3; }
-.slot-labelCancelled { background-color: #f44336; }
+
+/* 月のセル内まとめラップ */
+.fc-daygrid-day-frame > div.summary-wrap {
+    margin-top: 2px;
+}
+
+/* ホバー時 */
+.slot-label:hover, .summary:hover {
+    opacity: 0.8;
+    cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -55,76 +47,83 @@
 <div id="calendar"></div>
 
 <script>
-// サーバーから渡されるイベント配列（Flask等から）
+// サーバーから渡されるイベント
 const RAW_EVENTS_ORIG = {{ events | tojson }};
 
-// ----------------- マイナス6時間補正 -----------------
+// ステータスごとの色制御をHTML/JS側に統一
+const STATUS_COLORS = {
+    "成約": "#4CAF50",
+    "NG": "#9E9E9E",
+    "留守": "#FFC107",
+    "リスケ": "#FF9800",
+    "返答待ち": "#03A9F4",
+    "商談待ち": "#2196F3"
+};
+
+// UTC補正 12時間 → 6時間
 const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
     const dt = new Date(e.start);
-    dt.setHours(dt.getHours() - 6); // ←6時間補正
+    dt.setHours(dt.getHours() - 6);
     return { ...e, start: dt };
 });
 
-// 日付/時間取得
-function getDateStr(dt){ return new Date(dt).toISOString().split("T")[0]; }
-function getHourStr(dt){ return new Date(dt).toISOString().split("T")[1].split(":")[0]; }
+// 日付・時間文字列
+function getDateStr(dt){ return dt.toISOString().split("T")[0]; }
+function getHourStr(dt){ return dt.toISOString().split("T")[1].split(":")[0]; }
 
-// ----------------- 月ビューサマリ -----------------
-function renderMonthSummary(calendar, info){
-    if(calendar.view.type !== "dayGridMonth") return;
+// 月ビューサマリ
+function renderMonthSummary(info){
+    if(info.view.type !== "dayGridMonth") return;
+
     const dateStr = info.date.toISOString().split("T")[0];
     const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
-    if(dayEvents.length === 0) return; // 0件は非表示
+    if(dayEvents.length === 0) return;
 
-    // ステータス4つ分をあらかじめ確保
-    const allStatuses = ["Done","Pending","InProgress","Cancelled"];
     const grouped = {};
-    allStatuses.forEach(s => grouped[s] = 0);
-    dayEvents.forEach(e => { if(e.status) grouped[e.status]++; });
+    dayEvents.forEach(e => { if(e.status) grouped[e.status] = (grouped[e.status]||0)+1; });
 
     const wrap = document.createElement("div");
-    wrap.className = "month-summary";
+    wrap.className = "summary-wrap";
 
-    allStatuses.forEach(s => {
-        if(grouped[s] === 0) return; // 0件は表示しない
+    for(const status of Object.keys(grouped)){
         const div = document.createElement("div");
-        div.className = "summaryBox summary"+s.replace(/\s/g,'');
-        div.textContent = s + " " + grouped[s] + "件";
+        div.className = "summary";
+        div.textContent = `${status} ${grouped[status]}件`;
+        div.style.backgroundColor = STATUS_COLORS[status] || "#BDBDBD";
         wrap.appendChild(div);
-    });
+    }
 
-    const target = info.el.querySelector(".fc-daygrid-day-frame") || info.el.querySelector(".fc-daygrid-day-events");
-    target?.appendChild(wrap);
+    const target = info.el.querySelector(".fc-daygrid-day-frame");
+    if(target) target.appendChild(wrap);
 }
 
-// ----------------- 日・週ビュー縦5枠 -----------------
+// 日・週ビュースロット
 function renderDayWeekSlots(info){
     if(!["timeGridDay","timeGridWeek"].includes(info.view.type)) return;
+
     const dateStr = info.date.toISOString().split("T")[0];
     const hour = info.date.getHours();
+
     const hourEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr && parseInt(getHourStr(e.start)) === hour);
     if(hourEvents.length === 0) return;
 
     const maxSlots = 5;
-    const displayEvents = hourEvents.slice(0, maxSlots);
+    const overflow = hourEvents.length > maxSlots ? hourEvents.length - maxSlots + 1 : 0;
+    const displayEvents = hourEvents.slice(0,maxSlots);
 
     const wrap = document.createElement("div");
-    wrap.style.display = "flex";
-    wrap.style.flexDirection = "column";
-    wrap.style.height = "100%";
-
-    displayEvents.forEach(e => {
+    displayEvents.forEach((e,i)=>{
         const div = document.createElement("div");
-        div.className = "slot-label slot-label" + e.status.replace(/\s/g,'');
-        div.textContent = e.status;
-        div.style.flex = "1"; // 縦5分割
+        div.className = "slot-label";
+        div.textContent = (i===maxSlots-1 && overflow>0) ? "+"+overflow : e.status;
+        div.style.backgroundColor = STATUS_COLORS[e.status] || "#BDBDBD";
         wrap.appendChild(div);
     });
 
     info.el.appendChild(wrap);
 }
 
-// ----------------- カレンダー初期化 -----------------
+// カレンダー初期化
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
     locale: "ja",
     initialView: "dayGridMonth",
@@ -135,15 +134,19 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
     slotMaxTime: "20:00:00",
     allDaySlot: false,
 
-    dayCellDidMount: info => renderMonthSummary(calendar, info),
+    dayCellDidMount: info => renderMonthSummary(info),
     slotLaneContent: info => renderDayWeekSlots(info),
 
     dateClick: info => calendar.changeView("timeGridDay", info.dateStr),
 
+    viewDidMount: info => {
+        // 月・週・日切替時に最新状態を反映
+        renderMonthSummary(info);
+        renderDayWeekSlots(info);
+    },
+
     slotLabelContent: info => {
-        const viewType = calendar.view.type;
-        if(viewType === "timeGridWeek") return info.text; // 週ビューは件数非表示
-        const dateStr = info.date.toISOString().split("T")[0];
+        const dateStr = calendar.getDate().toISOString().split("T")[0];
         const hour = info.date.getHours();
         const hourEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr && parseInt(getHourStr(e.start)) === hour);
         return info.text + " (" + hourEvents.length + ")";
