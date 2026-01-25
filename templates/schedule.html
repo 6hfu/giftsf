@@ -11,32 +11,39 @@
 body {
     font-family: system-ui, -apple-system;
     background: #f4f6f8;
+    margin: 0;
+    padding: 16px;
 }
 
 #calendar {
     background: #fff;
     border-radius: 12px;
-    padding: 10px;
+    padding: 12px;
 }
 
-/* 共通ブロック */
+/* ===== 共通 ===== */
 .summary {
     font-size: 11px;
-    padding: 4px;
+    padding: 4px 6px;
     border-radius: 6px;
     color: #fff;
     margin-bottom: 3px;
+    white-space: nowrap;
 }
 
 /* 危険度カラー */
-.safe { background: #4CAF50; }
-.warn { background: #FFC107; color:#000; }
+.safe   { background: #4CAF50; }
+.warn   { background: #FFC107; color: #000; }
 .danger { background: #F44336; }
 
+/* DAYビュー時間帯ブロック */
 .hour-box {
-    padding: 4px;
+    margin-top: 2px;
+    padding: 4px 6px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 11px;
+    color: #fff;
+    line-height: 1.3;
 }
 </style>
 </head>
@@ -45,90 +52,121 @@ body {
 <div id="calendar"></div>
 
 <script>
+/* ===============================
+   Salesforce から渡されるイベント
+   必須: start, status
+================================ */
 const EVENTS = {{ events | tojson }};
 
+/* ===== 危険度判定 ===== */
 function dangerClass(count) {
-    if (count >= 4) return "danger";
-    if (count >= 2) return "warn";
+    if (count >= 5) return "danger";
+    if (count >= 3) return "warn";
     return "safe";
 }
 
-function groupBy(arr, keyFn) {
-    return arr.reduce((acc, x) => {
-        const k = keyFn(x);
+/* ===== グルーピング ===== */
+function groupBy(arr, key) {
+    return arr.reduce((acc, cur) => {
+        const k = cur[key];
+        if (!k) return acc;
         acc[k] = acc[k] || [];
-        acc[k].push(x);
+        acc[k].push(cur);
         return acc;
     }, {});
 }
 
-const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
+/* ===== 日付文字列取得 ===== */
+function toDateStr(d) {
+    return d.toISOString().split("T")[0];
+}
+
+const calendar = new FullCalendar.Calendar(
+    document.getElementById("calendar"),
+{
     locale: "ja",
     initialView: "dayGridMonth",
+    height: "auto",
+
     headerToolbar: {
         left: "prev,next today",
         center: "title",
         right: "dayGridMonth,timeGridWeek,timeGridDay"
     },
+
     events: EVENTS,
 
-    /* ===== MONTH & WEEK（日単位） ===== */
+    /* ===============================
+       MONTH & WEEK（日単位集計）
+    ================================ */
     dayCellDidMount(info) {
-        if (!["dayGridMonth", "timeGridWeek"].includes(calendar.view.type)) return;
+        const view = calendar.view.type;
+        if (!["dayGridMonth", "timeGridWeek"].includes(view)) return;
 
-        const dateStr = info.date.toISOString().split("T")[0];
-        const dayEvents = EVENTS.filter(e => e.start.startsWith(dateStr));
+        const dateStr = toDateStr(info.date);
+        const dayEvents = EVENTS.filter(e =>
+            e.start && e.start.startsWith(dateStr)
+        );
+
         if (dayEvents.length === 0) return;
 
-        const grouped = groupBy(dayEvents, e => e.status);
+        const grouped = groupBy(dayEvents, "status");
+        if (Object.keys(grouped).length === 0) return;
+
         const wrap = document.createElement("div");
 
-        Object.keys(grouped).forEach(status => {
-            const count = grouped[status].length;
+        Object.entries(grouped).forEach(([status, list]) => {
             const div = document.createElement("div");
-            div.className = `summary ${dangerClass(count)}`;
-            div.textContent = `${status} ${count}件`;
+            div.className = `summary ${dangerClass(list.length)}`;
+            div.textContent = `${status} ${list.length}件`;
             wrap.appendChild(div);
         });
 
-        info.el.querySelector(".fc-daygrid-day-events")?.appendChild(wrap);
+        const target =
+            info.el.querySelector(".fc-daygrid-day-events") ||
+            info.el.querySelector(".fc-daygrid-day-frame");
+
+        target?.appendChild(wrap);
     },
 
-    /* ===== DAY（時間単位） ===== */
+    /* ===============================
+       DAY（時間帯集計）
+    ================================ */
     slotLabelDidMount(info) {
         if (calendar.view.type !== "timeGridDay") return;
 
         const hour = info.date.getHours();
-        const dateStr = calendar.getDate().toISOString().split("T")[0];
+        const dateStr = toDateStr(calendar.getDate());
 
         const hourEvents = EVENTS.filter(e => {
+            if (!e.start || !e.status) return false;
             const d = new Date(e.start);
-            return d.toISOString().startsWith(dateStr) && d.getHours() === hour;
+            return toDateStr(d) === dateStr && d.getHours() === hour;
         });
 
         if (hourEvents.length === 0) return;
 
-        const grouped = groupBy(hourEvents, e => e.status);
+        const grouped = groupBy(hourEvents, "status");
 
         const box = document.createElement("div");
         box.className = `hour-box ${dangerClass(hourEvents.length)}`;
 
-        let text = "";
-        Object.keys(grouped).forEach(s => {
-            text += `${s}:${grouped[s].length} `;
-        });
-        box.textContent = text.trim();
+        box.innerHTML = Object.entries(grouped)
+            .map(([s, list]) => `${s}:${list.length}`)
+            .join(" / ");
 
         info.el.appendChild(box);
     },
 
+    /* ===== 日クリック ===== */
     dateClick(info) {
         calendar.changeView("timeGridDay", info.dateStr);
     },
 
     slotMinTime: "08:00:00",
     slotMaxTime: "20:00:00",
-    nowIndicator: true
+    nowIndicator: true,
+    allDaySlot: false
 });
 
 calendar.render();
