@@ -998,27 +998,50 @@ def update_record():
 
 
 
+# ========================================
+# 月ビュー
+# ========================================
 @app.route("/schedule/month")
 def schedule_month():
+    # 月の基準日？指定があればその日付、なければ今日
+    base_date_str = request.args.get("date")
+    base_date = datetime.strptime(base_date_str, "%Y-%m-%d") if base_date_str else datetime.today()
+
     events = get_schedule_records()
-    # 時刻丸めも必要なら行う
     for r in events:
         dt = round_time_30min(r["next_call"])
         r["next_call"] = dt.strftime("%Y-%m-%dT%H:%M:%S")
-    return render_template("month.html", events=events)
+    
+    return render_template("month.html", events=events, base_date=base_date.strftime("%Y-%m-%d"))
 
+# ========================================
+# 週ビュー
+# ========================================
 @app.route("/schedule/week")
 def schedule_week():
+    # ?date=YYYY-MM-DD があればその週を表示
+    base_date_str = request.args.get("date")
+    base_date = datetime.strptime(base_date_str, "%Y-%m-%d") if base_date_str else datetime.today()
+
     events = get_schedule_records()
     for r in events:
         dt = round_time_30min(r["next_call"])
         r["next_call"] = dt.strftime("%Y-%m-%dT%H:%M:%S")
-    return render_template("week.html", events=events)
+    
+    return render_template("week.html", events=events, base_date=base_date.strftime("%Y-%m-%d"))
 
+# ========================================
+# 日ビュー
+# ========================================
 @app.route("/schedule/day")
 def schedule_day():
+    # ?date=YYYY-MM-DD があればその日を表示
+    base_date_str = request.args.get("date")
+    base_date = datetime.strptime(base_date_str, "%Y-%m-%d") if base_date_str else datetime.today()
+
     events = get_schedule_records()
     for r in events:
         dt = round_time_30min(r["next_call"])
         r["next_call"] = dt.strftime("%Y-%m-%dT%H:%M:%S")
-    return render_template("day.html", events=events)
+    
+    return render_template("day.html", events=events, base_date=base_date.strftime("%Y-%m-%d"))
