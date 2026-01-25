@@ -7,35 +7,13 @@
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
-<style>
-body { font-family: system-ui, -apple-system; background:#f4f6f8; margin:0; padding:16px; }
-#calendar { background:#fff; border-radius:12px; padding:12px; }
-
-/* 月ビュー縦ラベル */
-.summary { font-size:14px; padding:6px 8px; border-radius:6px; color:#fff; margin-bottom:4px; display:block; }
-.summary留守      { background:#FFC107; color:#000; }
-.summaryリスケ    { background:#FF9800; color:#fff; }
-.summary返答待ち  { background:#03A9F4; color:#fff; }
-.summary商談待ち  { background:#2196F3; color:#fff; }
-
-/* 日・週ビュー縦5枠ラベル */
-.slot-label { font-size:14px; padding:6px 8px; border-radius:6px; margin:2px 0; text-align:center; color:#fff; }
-.slot-label留守      { background:#FFC107; color:#000; }
-.slot-labelリスケ    { background:#FF9800; color:#fff; }
-.slot-label返答待ち  { background:#03A9F4; color:#fff; }
-.slot-label商談待ち  { background:#2196F3; color:#fff; }
-</style>
-</head>
-<body>
-<div id="calendar"></div>
-
 <script>
-const RAW_EVENTS_UTC = {{ events | tojson }};
+const RAW_EVENTS_ORIG = {{ events | tojson }};
 
-// UTC → JST に変換
-const RAW_EVENTS = RAW_EVENTS_UTC.map(e => {
-    const dt = new Date(e.start);       // UTC としてパース
-    dt.setHours(dt.getHours() + 9);    // JST に変換
+// 強制的に -12時間して表示用イベントに変換
+const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
+    const dt = new Date(e.start);
+    dt.setHours(dt.getHours() - 12); // ←ここでマイナス12時間
     return { ...e, start: dt.toISOString().slice(0,19) }; // YYYY-MM-DDTHH:MM:SS
 });
 
@@ -117,6 +95,7 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
 
 calendar.render();
 </script>
+
 
 
 </body>
