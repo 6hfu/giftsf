@@ -11,8 +11,8 @@
 body { font-family: system-ui, -apple-system; background:#f4f6f8; margin:0; padding:16px; }
 #calendar { background:#fff; border-radius:12px; padding:12px; }
 
-/* 月ビュー用サマリラベル */
-.summary { font-size:14px; padding:6px 8px; border-radius:6px; color:#fff; margin-bottom:3px; display:inline-block; }
+/* 月ビュー用サマリラベル（縦表示） */
+.summary { font-size:14px; padding:6px 8px; border-radius:6px; color:#fff; margin-bottom:4px; display:block; }
 
 /* ステータス別色 */
 .summary留守      { background:#FFC107; color:#000; }
@@ -46,21 +46,21 @@ body { font-family: system-ui, -apple-system; background:#f4f6f8; margin:0; padd
 <script>
 const RAW_EVENTS = {{ events | tojson }};
 
-// 月ビューサマリ
+// 月ビューサマリ（縦に並べる）
 function renderMonthSummary(calendar, info){
-    if(calendar.view.type!=="dayGridMonth") return;
+    if(calendar.view.type !== "dayGridMonth") return;
     const dateStr = info.date.toISOString().split("T")[0];
-    const dayEvents = RAW_EVENTS.filter(e=>e.start.startsWith(dateStr));
+    const dayEvents = RAW_EVENTS.filter(e => e.start.startsWith(dateStr));
     if(dayEvents.length===0) return;
 
     const grouped = {};
-    dayEvents.forEach(e=>{ if(e.status) grouped[e.status]=(grouped[e.status]||0)+1; });
+    dayEvents.forEach(e => { if(e.status) grouped[e.status] = (grouped[e.status]||0)+1; });
 
     const wrap = document.createElement("div");
     for(const status of Object.keys(grouped)){
         const div = document.createElement("div");
         div.className = "summary summary"+status.replace(/\s/g,"");
-        div.textContent = status+" "+grouped[status]+"件";
+        div.textContent = status + " " + grouped[status] + "件";
         wrap.appendChild(div);
     }
 
@@ -68,21 +68,18 @@ function renderMonthSummary(calendar, info){
     target?.appendChild(wrap);
 }
 
-// FullCalendar用変換（縦5枠対応）
+// 日ビュー用縦5枠ガントチャート
 function prepareFCEvents(raw){
-    // 日ビュー専用用に枠情報も追加
     const dayMap = {};
-    raw.forEach(e=>{
+    raw.forEach(e => {
         const dt = new Date(e.start);
         const dateStr = dt.toISOString().split("T")[0];
         const hour = dt.getHours();
-
         dayMap[dateStr] = dayMap[dateStr] || {};
         dayMap[dateStr][hour] = dayMap[dateStr][hour] || [];
         dayMap[dateStr][hour].push(e);
     });
 
-    // 枠数5固定、超過は最後に+N
     const events = [];
     Object.keys(dayMap).forEach(date=>{
         Object.keys(dayMap[date]).forEach(hour=>{
@@ -90,7 +87,7 @@ function prepareFCEvents(raw){
             const maxSlots = 5;
             const overflow = list.length > maxSlots ? list.length - maxSlots + 1 : 0;
 
-            for(let i=0;i<Math.min(maxSlots,list.length);i++){
+            for(let i=0; i<Math.min(maxSlots, list.length); i++){
                 const e = list[i];
                 const start = new Date(e.start);
                 const end = new Date(start.getTime()+30*60*1000);
@@ -109,7 +106,6 @@ function prepareFCEvents(raw){
 
 const EVENTS = prepareFCEvents(RAW_EVENTS);
 
-// カレンダー初期化
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
     locale:"ja",
     initialView:"dayGridMonth",
@@ -124,7 +120,6 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
     dayCellDidMount:function(info){ renderMonthSummary(calendar, info); },
     dateClick:function(info){ calendar.changeView("timeGridDay", info.dateStr); },
     slotLabelContent:function(info){
-        // 時間横に件数表示
         const dateStr = calendar.getDate().toISOString().split("T")[0];
         const hourEvents = RAW_EVENTS.filter(e=>{
             const d = new Date(e.start);
