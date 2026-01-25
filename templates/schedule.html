@@ -2,58 +2,41 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>商談スケジュール</title>
+<title>商談負荷カレンダー</title>
 
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
 body {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont;
-    background: #f5f5f5;
+    font-family: system-ui, -apple-system;
+    background: #f4f6f8;
 }
 
 #calendar {
     background: #fff;
-    padding: 10px;
     border-radius: 12px;
+    padding: 10px;
 }
 
-/* ===== MONTH ===== */
-.month-summary {
+/* 共通ブロック */
+.summary {
     font-size: 11px;
-    margin-top: 4px;
-}
-.month-summary div {
+    padding: 4px;
+    border-radius: 6px;
     color: #fff;
-    padding: 2px 4px;
-    border-radius: 4px;
-    margin-bottom: 2px;
-    white-space: nowrap;
+    margin-bottom: 3px;
 }
 
-/* ===== WEEK ===== */
-.week-summary {
-    font-size: 11px;
-}
-.week-summary div {
-    color: #fff;
-    border-radius: 4px;
-    padding: 2px 4px;
-    margin-bottom: 2px;
-}
+/* 危険度カラー */
+.safe { background: #4CAF50; }
+.warn { background: #FFC107; color:#000; }
+.danger { background: #F44336; }
 
-/* ===== DAY (Gantt) ===== */
-.fc-timegrid-event {
+.hour-box {
+    padding: 4px;
     border-radius: 6px;
     font-size: 12px;
-    padding: 4px;
-    overflow: hidden;
-    white-space: nowrap;
-}
-
-.fc-timegrid-event .fc-event-title {
-    font-weight: 600;
 }
 </style>
 </head>
@@ -64,19 +47,24 @@ body {
 <script>
 const EVENTS = {{ events | tojson }};
 
-const STATUS_COLORS = {
-    "成約": "#4CAF50",
-    "NG": "#9E9E9E",
-    "留守": "#FFC107",
-    "リスケ": "#FF9800",
-    "返答待ち": "#03A9F4",
-    "商談待ち": "#2196F3"
-};
+function dangerClass(count) {
+    if (count >= 4) return "danger";
+    if (count >= 2) return "warn";
+    return "safe";
+}
+
+function groupBy(arr, keyFn) {
+    return arr.reduce((acc, x) => {
+        const k = keyFn(x);
+        acc[k] = acc[k] || [];
+        acc[k].push(x);
+        return acc;
+    }, {});
+}
 
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
     locale: "ja",
     initialView: "dayGridMonth",
-    height: "auto",
     headerToolbar: {
         left: "prev,next today",
         center: "title",
@@ -84,90 +72,63 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
     },
     events: EVENTS,
 
-    /* ===== 月 ===== */
+    /* ===== MONTH & WEEK（日単位） ===== */
     dayCellDidMount(info) {
-        if (calendar.view.type !== "dayGridMonth") return;
+        if (!["dayGridMonth", "timeGridWeek"].includes(calendar.view.type)) return;
 
         const dateStr = info.date.toISOString().split("T")[0];
         const dayEvents = EVENTS.filter(e => e.start.startsWith(dateStr));
-
         if (dayEvents.length === 0) return;
 
-        const counts = {};
-        dayEvents.forEach(e => {
-            counts[e.status] = (counts[e.status] || 0) + 1;
-        });
-
+        const grouped = groupBy(dayEvents, e => e.status);
         const wrap = document.createElement("div");
-        wrap.className = "month-summary";
 
-        Object.keys(counts).forEach(s => {
+        Object.keys(grouped).forEach(status => {
+            const count = grouped[status].length;
             const div = document.createElement("div");
-            div.style.background = STATUS_COLORS[s] || "#999";
-            div.textContent = `${s} ${counts[s]}`;
+            div.className = `summary ${dangerClass(count)}`;
+            div.textContent = `${status} ${count}件`;
             wrap.appendChild(div);
         });
 
-        info.el.querySelector(".fc-daygrid-day-events").appendChild(wrap);
+        info.el.querySelector(".fc-daygrid-day-events")?.appendChild(wrap);
     },
 
-    /* ===== 週 ===== */
-    eventContent(arg) {
-        if (arg.view.type !== "timeGridWeek") return;
+    /* ===== DAY（時間単位） ===== */
+    slotLabelDidMount(info) {
+        if (calendar.view.type !== "timeGridDay") return;
 
-        const startHour = arg.event.start.getHours();
-        const dateStr = arg.event.startStr.split("T")[0];
+        const hour = info.date.getHours();
+        const dateStr = calendar.getDate().toISOString().split("T")[0];
 
-        const slotEvents = EVENTS.filter(e => {
+        const hourEvents = EVENTS.filter(e => {
             const d = new Date(e.start);
-            return d.toISOString().startsWith(dateStr) && d.getHours() === startHour;
+            return d.toISOString().startsWith(dateStr) && d.getHours() === hour;
         });
 
-        const counts = {};
-        slotEvents.forEach(e => {
-            counts[e.status] = (counts[e.status] || 0) + 1;
+        if (hourEvents.length === 0) return;
+
+        const grouped = groupBy(hourEvents, e => e.status);
+
+        const box = document.createElement("div");
+        box.className = `hour-box ${dangerClass(hourEvents.length)}`;
+
+        let text = "";
+        Object.keys(grouped).forEach(s => {
+            text += `${s}:${grouped[s].length} `;
         });
+        box.textContent = text.trim();
 
-        let html = `<div class="week-summary">`;
-        let shown = 0;
-        let total = Object.values(counts).reduce((a,b)=>a+b,0);
-
-        for (let s in counts) {
-            if (shown >= 3) break;
-            html += `<div style="background:${STATUS_COLORS[s]}">${s} ${counts[s]}</div>`;
-            shown++;
-        }
-
-        if (total > 3) {
-            html += `<div style="background:#666">+${total-3}</div>`;
-        }
-
-        html += `</div>`;
-        return { html };
-    },
-
-    /* ===== 日（ガント） ===== */
-    eventDidMount(info) {
-        if (info.view.type !== "timeGridDay") return;
-
-        const sameTime = calendar.getEvents().filter(e =>
-            e.start.getTime() === info.event.start.getTime()
-        );
-
-        const index = sameTime.findIndex(e => e.id === info.event.id);
-        const width = 100 / sameTime.length;
-
-        info.el.style.width = `calc(${width}% - 2px)`;
-        info.el.style.left = `${width * index}%`;
+        info.el.appendChild(box);
     },
 
     dateClick(info) {
         calendar.changeView("timeGridDay", info.dateStr);
     },
 
-    nowIndicator: true,
     slotMinTime: "08:00:00",
-    slotMaxTime: "20:00:00"
+    slotMaxTime: "20:00:00",
+    nowIndicator: true
 });
 
 calendar.render();
