@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>商談カレンダー（月）</title>
+
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+<style>
+body {
+    background: #f5f7fa;
+    font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
+}
+
+/* 土日背景 */
+.fc-day-sun { background: rgba(244, 67, 54, 0.08); }
+.fc-day-sat { background: rgba(33, 150, 243, 0.08); }
+
+/* 月ビューステータスラベル */
+.summary-wrap {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100px;
+    margin-top: 6px;
+    gap: 6px;
+}
+
+.summary {
+    font-size: 13px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    color: #fff;
+    min-height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-weight: 600;
+    box-sizing: border-box;
+}
+</style>
+</head>
+<body>
+
+<div id="calendar"></div>
+
+<script>
+// ===== サーバーからのイベント =====
+const RAW_EVENTS_ORIG = {{ events | tojson }};
+
+// 時刻補正（-6時間）
+const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
+    const dt = new Date(e.start);
+    dt.setHours(dt.getHours() - 6);
+    return { ...e, start: dt };
+});
+
+// util
+const getDateStr = d => d.toISOString().split("T")[0];
+
+// ===== 月ビューステータス表示 =====
+function renderMonthSummary(info){
+    if(info.view.type !== "dayGridMonth") return;
+
+    const dateStr = getDateStr(info.date);
+    const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
+
+    const countMap = {};
+    ["商談待ち","返答待ち","リスケ","留守"].forEach(s => countMap[s] = 0);
+    dayEvents.forEach(e => countMap[e.status] !== undefined && countMap[e.status]++);
+
+    const wrap = document.createElement("div");
+    wrap.className = "summary-wrap";
+
+    const STATUS_COLORS = {
+        "商談待ち": "#2196F3",
+        "返答待ち": "#03A9F4",
+        "リスケ": "#FF9800",
+        "留守": "#FFC107"
+    };
+
+    ["商談待ち","返答待ち","リスケ","留守"].forEach(status => {
+        const div = document.createElement("div");
+        div.className = "summary";
+        if(countMap[status] > 0){
+            div.textContent = `${status} ${countMap[status]}件`;
+            div.style.backgroundColor = STATUS_COLORS[status];
+        }
+        wrap.appendChild(div);
+    });
+
+    info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(wrap);
+}
+
+// ===== カレンダー初期化 =====
+const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
+    locale: "ja",
+    initialView: "dayGridMonth",
+    height: "auto",
+
+    headerToolbar: {
+        left: "prev,next today",
+        center: "title",
+        right: "dayGridMonth"
+    },
+
+    buttonText: {
+        today: "今日",
+        month: "月"
+    },
+
+    dayCellDidMount: renderMonthSummary,
+
+    dateClick: info => alert("日付をクリックしました: " + info.dateStr)
+});
+
+calendar.render();
+</script>
+
+</body>
+</html>
