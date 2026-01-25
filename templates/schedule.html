@@ -8,150 +8,94 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
-body {
-    font-family: system-ui, -apple-system;
-    background: #f4f6f8;
-    margin: 0;
-    padding: 16px;
-}
-
-#calendar {
-    background: #fff;
-    border-radius: 12px;
-    padding: 12px;
-}
+body { font-family: system-ui, -apple-system; background: #f4f6f8; margin:0; padding:16px; }
+#calendar { background:#fff; border-radius:12px; padding:12px; }
 
 /* 月ビュー用件数サマリ */
 .summary {
-    font-size: 11px;
-    padding: 4px 6px;
-    border-radius: 6px;
-    color: #fff;
-    margin-bottom: 3px;
-    white-space: nowrap;
+    font-size:11px; padding:4px 6px; border-radius:6px; color:#fff; margin-bottom:3px; white-space:nowrap;
 }
+.safe   { background:#4CAF50; }
+.warn   { background:#FFC107; color:#000; }
+.danger { background:#F44336; }
 
-/* 件数に応じた色 */
-.safe   { background: #4CAF50; }
-.warn   { background: #FFC107; color:#000; }
-.danger { background: #F44336; }
+/* ガントチャート風イベント */
+.fc-event { font-size:10px; padding:2px 4px; border-radius:4px; margin:1px 0; text-align:center; }
 
-/* ステータスごとのイベント色 */
-.fc-event成約      { background-color: #4CAF50; color:#fff; }
-.fc-eventNG        { background-color: #9E9E9E; color:#fff; }
-.fc-event留守      { background-color: #FFC107; color:#000; }
-.fc-eventリスケ    { background-color: #FF9800; color:#fff; }
-.fc-event返答待ち  { background-color: #03A9F4; color:#fff; }
-.fc-event商談待ち  { background-color: #2196F3; color:#fff; }
-.fc-event-default  { background-color: #BDBDBD; color:#fff; }
-
-.fc-event {
-    font-size: 10px;
-    padding: 1px 3px;
-    border-radius: 4px;
-    margin: 1px 0;
-}
+/* ステータス別色 */
+.fc-event成約      { background:#4CAF50; color:#fff; }
+.fc-eventNG        { background:#9E9E9E; color:#fff; }
+.fc-event留守      { background:#FFC107; color:#000; }
+.fc-eventリスケ    { background:#FF9800; color:#fff; }
+.fc-event返答待ち  { background:#03A9F4; color:#fff; }
+.fc-event商談待ち  { background:#2196F3; color:#fff; }
+.fc-event-default  { background:#BDBDBD; color:#fff; }
 </style>
 </head>
-
 <body>
 <div id="calendar"></div>
 
 <script>
+// Python側から渡されたevents
 const RAW_EVENTS = {{ events | tojson }};
 
-// ===== 件数 → 色 =====
-function dangerClass(count) {
-    if (count >= 5) return "danger";
-    if (count >= 3) return "warn";
+// 件数に応じたカラー（サマリ用）
+function dangerClass(count){
+    if(count>=5) return "danger";
+    if(count>=3) return "warn";
     return "safe";
 }
 
-// ===== groupBy =====
-function groupBy(arr, key) {
-    return arr.reduce((acc, cur) => {
-        const k = cur[key];
-        if (!k) return acc;
-        acc[k] = acc[k] || [];
-        acc[k].push(cur);
-        return acc;
-    }, {});
+// 月ビュー用：日ごと件数サマリ
+function renderMonthSummary(calendar){
+    return function(info){
+        if(calendar.view.type!=="dayGridMonth") return;
+        const dateStr = info.date.toISOString().split("T")[0];
+        const dayEvents = RAW_EVENTS.filter(e=>e.start.startsWith(dateStr));
+        if(dayEvents.length===0) return;
+        const grouped = {};
+        dayEvents.forEach(e=>{ if(e.status) grouped[e.status]=(grouped[e.status]||0)+1; });
+
+        const wrap = document.createElement("div");
+        for(const [status,count] of Object.entries(grouped)){
+            const div = document.createElement("div");
+            div.className=`summary ${dangerClass(count)}`;
+            div.textContent=`${status} ${count}件`;
+            wrap.appendChild(div);
+        }
+
+        const target = info.el.querySelector(".fc-daygrid-day-events") || info.el.querySelector(".fc-daygrid-day-frame");
+        target?.appendChild(wrap);
+    }
 }
 
-// ===== FullCalendar用に変換（30分ブロック対応） =====
-function prepareFCEvents(raw) {
-    return raw.map(e => {
+// FullCalendar用に変換（30分ブロック）
+function prepareFCEvents(raw){
+    return raw.map(e=>{
         const start = new Date(e.start);
-        const end = e.end ? new Date(e.end) : new Date(start.getTime() + 30*60*1000); // 30分ブロック
-        const statusClass = e.status ? e.status.replace(/\s/g,"") : "default";
-
-        return {
-            start: start.toISOString(),
-            end: end.toISOString(),
-            title: e.status || "",
-            className: `fc-event${statusClass}`
-        };
+        // 30分ブロック
+        const end = e.end ? new Date(e.end) : new Date(start.getTime() + 30*60*1000);
+        const cls = e.status ? "fc-event"+e.status.replace(/\s/g,"") : "fc-event-default";
+        return { start:start, end:end, title:e.status||"", className:cls };
     });
 }
 
 const EVENTS = prepareFCEvents(RAW_EVENTS);
 
-// 月ビュー用：日ごと件数サマリ
-function renderMonthDaySummary(calendar) {
-    return function(info) {
-        if (!["dayGridMonth"].includes(calendar.view.type)) return;
-
-        const dateStr = info.date.toISOString().split("T")[0];
-        const dayEvents = RAW_EVENTS.filter(e =>
-            e.start && e.start.startsWith(dateStr)
-        );
-        if (dayEvents.length === 0) return;
-
-        const grouped = groupBy(dayEvents, "status");
-        if (Object.keys(grouped).length === 0) return;
-
-        const wrap = document.createElement("div");
-        Object.entries(grouped).forEach(([status, list]) => {
-            const div = document.createElement("div");
-            div.className = `summary ${dangerClass(list.length)}`;
-            div.textContent = `${status} ${list.length}件`;
-            wrap.appendChild(div);
-        });
-
-        const target =
-            info.el.querySelector(".fc-daygrid-day-events") ||
-            info.el.querySelector(".fc-daygrid-day-frame");
-
-        target?.appendChild(wrap);
-    }
-}
-
-const calendar = new FullCalendar.Calendar(
-document.getElementById("calendar"),
-{
-    locale: "ja",
-    initialView: "dayGridMonth",
-    height: "auto",
-
-    headerToolbar: {
-        left: "prev,next today",
-        center: "title",
-        right: "dayGridMonth,timeGridWeek,timeGridDay"
-    },
-
-    events: EVENTS,
-
-    eventDisplay: "block",   // ガントチャート風に積み上げ
-    nowIndicator: true,
-    slotMinTime: "08:00:00",
-    slotMaxTime: "20:00:00",
-    allDaySlot: false,
-
-    dayCellDidMount: renderMonthDaySummary(this),
-
-    dateClick(info) {
-        calendar.changeView("timeGridDay", info.dateStr);
-    }
+// カレンダー初期化
+const calendar = new FullCalendar.Calendar(document.getElementById("calendar"),{
+    locale:"ja",
+    initialView:"dayGridMonth",
+    height:"auto",
+    headerToolbar:{ left:"prev,next today", center:"title", right:"dayGridMonth,timeGridWeek,timeGridDay" },
+    events:EVENTS,
+    eventDisplay:"block",   // ガントチャート風
+    nowIndicator:true,
+    slotMinTime:"08:00:00",
+    slotMaxTime:"20:00:00",
+    allDaySlot:false,
+    dayCellDidMount:renderMonthSummary(this),
+    dateClick(info){ calendar.changeView("timeGridDay", info.dateStr); }
 });
 
 calendar.render();
