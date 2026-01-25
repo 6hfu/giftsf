@@ -29,7 +29,7 @@ const RAW_EVENTS_ORIG = {{ events | tojson }};
 // ----------------- マイナス12時間補正 -----------------
 const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
     const dt = new Date(e.start);
-    dt.setHours(dt.getHours() - 12); // ←強制マイナス12時間
+    dt.setHours(dt.getHours() - 6); // ←強制マイナス12時間
     return { ...e, start: dt }; // Dateオブジェクトのまま保持
 });
 
