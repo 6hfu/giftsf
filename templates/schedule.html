@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>商談カレンダー</title>
+
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+<style>
+body {
+    background: #f5f7fa;
+    font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
+}
+
+/* ===== 土日背景（月表示含む） ===== */
+.fc-day-sun {
+    background: rgba(244, 67, 54, 0.08);
+}
+.fc-day-sat {
+    background: rgba(33, 150, 243, 0.08);
+}
+
+/* ===== 月ビューのステータスラベル（そのまま） ===== */
+.summary-wrap {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100px;
+    margin-top: 6px;
+    gap: 6px;
+}
+
+.summary {
+    font-size: 13px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    color: #fff;
+    min-height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-weight: 600;
+    box-sizing: border-box;
+}
+
+/* ===== 週・日ビュー：30分枠を広げる ===== */
+.fc-timegrid-slot {
+    height: 48px !important;
+}
+
+/* ===== 週・日ビュー：ガントチャート風 ===== */
+.gantt-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 4px;
+}
+
+.gantt-bar {
+    flex: 1;
+    height: 16px;
+    background: #2196F3;
+    border-radius: 4px;
+}
+
+.gantt-more {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin-left: 4px;
+}
+</style>
+</head>
+<body>
+
+<div id="calendar"></div>
+
+<script>
+// ===== サーバーからのイベント =====
+const RAW_EVENTS_ORIG = {{ events | tojson }};
+
+// ===== 週・日表示用：合計対象ステータス =====
+const TARGET_STATUSES = [
+    "商談待ち",
+    "返答待ち",
+    "リスケ",
+    "留守"
+];
+
+// ===== 時刻補正（-6時間） =====
+const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
+    const dt = new Date(e.start);
+    dt.setHours(dt.getHours() - 6);
+    return { ...e, start: dt };
+});
+
+// util
+const getDateStr = d => d.toISOString().split("T")[0];
+const getHour = d => d.getHours();
+
+// ===== 月ビュー描画（そのまま） =====
+function renderMonthSummary(info){
+    if(info.view.type !== "dayGridMonth") return;
+
+    const dateStr = getDateStr(info.date);
+    const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
+
+    const countMap = {};
+    ["商談待ち","返答待ち","リスケ","留守"].forEach(s => countMap[s] = 0);
+    dayEvents.forEach(e => countMap[e.status] !== undefined && countMap[e.status]++);
+
+    const wrap = document.createElement("div");
+    wrap.className = "summary-wrap";
+
+    ["商談待ち","返答待ち","リスケ","留守"].forEach(status => {
+        const div = document.createElement("div");
+        div.className = "summary";
+
+        if(countMap[status] > 0){
+            div.textContent = `${status} ${countMap[status]}件`;
+            // 色は月表示用
+            const STATUS_COLORS = {
+                "商談待ち": "#2196F3",
+                "返答待ち": "#03A9F4",
+                "リスケ": "#FF9800",
+                "留守": "#FFC107"
+            };
+            div.style.backgroundColor = STATUS_COLORS[status];
+        }
+
+        wrap.appendChild(div);
+    });
+
+    info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(wrap);
+}
+
+// ===== 週・日ビュー：ガントチャート風表示 =====
+function renderWeekDayGantt(info){
+    if(!["timeGridWeek","timeGridDay"].includes(info.view.type)) return;
+
+    const dateStr = getDateStr(info.date);
+    const hour = getHour(info.date);
+
+    // この時間に対象ステータスのイベントがいくつあるか
+    const count = RAW_EVENTS.filter(e =>
+        getDateStr(e.start) === dateStr &&
+        getHour(e.start) === hour &&
+        TARGET_STATUSES.includes(e.status)
+    ).length;
+
+    if(count === 0) return;
+
+    const wrap = document.createElement("div");
+    wrap.className = "gantt-wrap";
+
+    const maxBars = 5;
+    const visible = Math.min(count, maxBars);
+
+    for(let i=0;i<visible;i++){
+        const bar = document.createElement("div");
+        bar.className = "gantt-bar";
+        wrap.appendChild(bar);
+    }
+
+    if(count > maxBars){
+        const more = document.createElement("div");
+        more.className = "gantt-more";
+        more.textContent = `+${count - maxBars}件`;
+        wrap.appendChild(more);
+    }
+
+    info.el.appendChild(wrap);
+}
+
+// ===== カレンダー初期化 =====
+const calendar = new FullCalendar.Calendar(
+    document.getElementById("calendar"),
+    {
+        locale: "ja",
+        initialView: "dayGridMonth",
+        height: "auto",
+
+        headerToolbar: {
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,timeGridWeek,timeGridDay"
+        },
+
+        buttonText: {
+            today: "今日",
+            month: "月",
+            week: "週",
+            day: "日"
+        },
+
+        nowIndicator: true,
+        slotMinTime: "08:00:00",
+        slotMaxTime: "20:00:00",
+        allDaySlot: false,
+
+        dayCellDidMount: renderMonthSummary,
+        slotLaneDidMount: renderWeekDayGantt,
+
+        dateClick: info => calendar.changeView("timeGridDay", info.dateStr),
+
+        /* ★ 時間ラベルはそのまま */
+        slotLabelContent: info => info.text
+    }
+);
+
+calendar.render();
+</script>
+
+</body>
+</html>
