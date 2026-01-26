@@ -17,6 +17,11 @@ body {
 .fc-day-sun { background: rgba(244, 67, 54, 0.06); }
 .fc-day-sat { background: rgba(33, 150, 243, 0.06); }
 
+/* ===== 月ビュー：日セルの高さ確保 ===== */
+.fc-daygrid-day-frame {
+    min-height: 140px;
+}
+
 /* ===== 件数ラベル共通 ===== */
 .summary-wrap {
     display: flex;
@@ -35,13 +40,11 @@ body {
     line-height: 1.2;
 }
 
+/* ===== 週・日ビュー：時間枠を広げる ===== */
+.fc-timegrid-slot {
+    height: 48px !important;
+}
 </style>
-</head>
-<body>
-
-<div id="calendar"></div>
-
-<script>
 // ==========================
 // サーバーから取得したイベント
 // ==========================
