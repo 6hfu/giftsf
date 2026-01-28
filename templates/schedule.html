@@ -36,9 +36,12 @@ body {
 <div id="calendar"></div>
 
 <script>
+// ==========================
+// サーバーから取得
+// ==========================
 const RAW_EVENTS_ORIG = {{ events | tojson }};
 
-// -6h補正
+// -6時間補正
 const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
     const d = new Date(e.start);
     d.setHours(d.getHours() - 6);
@@ -47,60 +50,61 @@ const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
 
 const dateStr = d => d.toISOString().split("T")[0];
 
-// ヒートカラー
+// ==========================
+// ヒートカラー（最大5件）
+// ==========================
 function heatColor(c){
     if(c === 1) return "#E3F2FD";
     if(c === 2) return "#90CAF9";
     if(c === 3) return "#FFCC80";
     if(c === 4) return "#FF8A65";
     if(c >= 5) return "#E53935";
-    return "";
+    return "#eee";
 }
 
-// ======================
-// 月：日ごとの最大同時間
-// ======================
-function getDayMaxOverlap(date){
-    const map = {};
-    RAW_EVENTS
-        .filter(e => dateStr(e.start) === dateStr(date))
-        .forEach(e => {
-            const h = new Date(e.start).getHours();
-            map[h] = (map[h] || 0) + 1;
-        });
-    return Math.max(0, ...Object.values(map));
-}
-
+// ==========================
+// 月：日ごと合計＋最大被り
+// ==========================
 function renderMonth(info){
     if(info.view.type !== "dayGridMonth") return;
-    const dayEvents = RAW_EVENTS.filter(e => dateStr(e.start) === dateStr(info.date));
-    if(dayEvents.length === 0) return;
 
-    const max = getDayMaxOverlap(info.date);
-    const div = document.createElement("div");
-    div.className = "total-box";
-    div.style.background = heatColor(max);
-    div.textContent = `${dayEvents.length}件`;
+    const events = RAW_EVENTS.filter(e => dateStr(e.start) === dateStr(info.date));
+    if(events.length === 0) return;
 
-    info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(div);
+    const hourMap = {};
+    events.forEach(e => {
+        const h = e.start.getHours();
+        hourMap[h] = (hourMap[h] || 0) + 1;
+    });
+
+    const maxOverlap = Math.max(...Object.values(hourMap));
+
+    const box = document.createElement("div");
+    box.className = "summary";
+    box.style.background = heatColor(maxOverlap);
+    box.textContent = `合計 ${events.length}件`;
+
+    info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(box);
 }
 
-// ======================
-// ★ 週・日：疑似イベント生成
-// ======================
+// ==========================
+// ★ 週・日：時間帯イベント生成
+// ==========================
 function buildTimeEvents(){
     const map = {};
 
     RAW_EVENTS.forEach(e => {
         const d = new Date(e.start);
         d.setMinutes(0,0,0);
-        const key = d.toISOString();
+
+        const key = `${dateStr(d)} ${String(d.getHours()).padStart(2,"0")}:00`;
         map[key] = (map[key] || 0) + 1;
     });
 
-    return Object.entries(map).map(([iso, count]) => {
-        const start = new Date(iso);
-        const end = new Date(start.getTime() + 60*60000);
+    return Object.entries(map).map(([key, count]) => {
+        const [date, hour] = key.split(" ");
+        const start = new Date(`${date}T${hour}:00`);
+        const end   = new Date(start.getTime() + 60*60000);
 
         return {
             start,
@@ -113,9 +117,9 @@ function buildTimeEvents(){
     });
 }
 
-// ======================
+// ==========================
 // カレンダー
-// ======================
+// ==========================
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
     locale: "ja",
     initialView: "dayGridMonth",
@@ -141,5 +145,6 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
 
 calendar.render();
 </script>
+
 </body>
 </html>
