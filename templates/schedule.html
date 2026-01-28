@@ -45,6 +45,12 @@ body {
     height: 48px !important;
 }
 </style>
+</head>
+
+<body>
+<div id="calendar"></div>
+
+<script>
 // ==========================
 // サーバーから取得したイベント
 // ==========================
@@ -70,7 +76,7 @@ const STATUS_COLORS = {
 const STATUSES = Object.keys(STATUS_COLORS);
 
 // ==========================
-// 共通：日付ごとの件数HTML生成
+// 日付ごとの件数HTML生成
 // ==========================
 function buildSummaryHTML(date) {
     const dateStr = getDateStr(date);
@@ -103,12 +109,9 @@ function renderAllViews(info) {
     const summary = buildSummaryHTML(info.date);
     if(!summary) return;
 
-    // 月
     if(info.view.type === "dayGridMonth") {
         info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(summary);
-    }
-    // 週・日
-    else {
+    } else {
         info.el.prepend(summary);
     }
 }
@@ -140,7 +143,6 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
 
     dayCellDidMount: renderAllViews,
 
-    // 日付クリック → 日ビュー
     dateClick: info => {
         calendar.changeView("timeGridDay", info.dateStr);
     }
