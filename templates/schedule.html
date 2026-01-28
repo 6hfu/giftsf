@@ -44,6 +44,23 @@ body {
 .fc-timegrid-slot {
     height: 48px !important;
 }
+
+/* ===== Corporateform ボタン ===== */
+.fc-corporateform-button {
+    background: linear-gradient(135deg, #4CAF50, #2E7D32);
+    color: #fff !important;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 10px 18px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    border: none;
+}
+
+.fc-corporateform-button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
 </style>
 </head>
 
@@ -81,7 +98,7 @@ const STATUSES = Object.keys(STATUS_COLORS);
 function buildSummaryHTML(date) {
     const dateStr = getDateStr(date);
     const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
-    if(dayEvents.length === 0) return null;
+    if (dayEvents.length === 0) return null;
 
     const countMap = {};
     STATUSES.forEach(s => countMap[s] = 0);
@@ -91,7 +108,7 @@ function buildSummaryHTML(date) {
     wrap.className = "summary-wrap";
 
     STATUSES.forEach(status => {
-        if(countMap[status] === 0) return;
+        if (countMap[status] === 0) return;
         const div = document.createElement("div");
         div.className = "summary";
         div.style.background = STATUS_COLORS[status];
@@ -107,9 +124,9 @@ function buildSummaryHTML(date) {
 // ==========================
 function renderAllViews(info) {
     const summary = buildSummaryHTML(info.date);
-    if(!summary) return;
+    if (!summary) return;
 
-    if(info.view.type === "dayGridMonth") {
+    if (info.view.type === "dayGridMonth") {
         info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(summary);
     } else {
         info.el.prepend(summary);
@@ -124,11 +141,24 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
     initialView: "dayGridMonth",
     height: "auto",
 
+    customButtons: {
+        corporateform: {
+            text: "Corporateform",
+            click: function () {
+                // ▼ 実際のURLに変更してください
+                window.location.href = "https://giftsf.onrender.com/corporateform";
+                // 別タブにしたい場合はこちら
+                // window.open("https://giftsf.onrender.com/corporateform", "_blank");
+            }
+        }
+    },
+
     headerToolbar: {
         left: "prev,next today",
         center: "title",
-        right: "dayGridMonth,timeGridWeek,timeGridDay"
+        right: "corporateform dayGridMonth,timeGridWeek,timeGridDay"
     },
+
     buttonText: {
         today: "今日",
         month: "月",
