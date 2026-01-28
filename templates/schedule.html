@@ -17,12 +17,12 @@ body {
 .fc-day-sun { background: rgba(244, 67, 54, 0.06); }
 .fc-day-sat { background: rgba(33, 150, 243, 0.06); }
 
-/* ===== 月ビュー：日セルの高さ確保 ===== */
+/* ===== 月ビュー高さ ===== */
 .fc-daygrid-day-frame {
     min-height: 140px;
 }
 
-/* ===== 件数ラベル共通 ===== */
+/* ===== 件数チップ ===== */
 .summary-wrap {
     display: flex;
     flex-direction: column;
@@ -37,12 +37,18 @@ body {
     color: #fff;
     font-weight: 600;
     text-align: center;
-    line-height: 1.2;
 }
 
-/* ===== 週・日ビュー：時間枠を広げる ===== */
+/* ===== 週・日ビュー時間幅 ===== */
 .fc-timegrid-slot {
     height: 48px !important;
+}
+
+/* ===== 疑似イベント中央寄せ ===== */
+.fc-event-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
 }
 </style>
 </head>
@@ -52,21 +58,22 @@ body {
 
 <script>
 // ==========================
-// サーバーから取得したイベント
+// サーバーイベント
 // ==========================
 const RAW_EVENTS_ORIG = {{ events | tojson }};
 
-// ===== 時刻補正（-6時間）=====
+// 時刻補正
 const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
     const d = new Date(e.start);
     d.setHours(d.getHours() - 6);
     return { ...e, start: d };
 });
 
-// util
 const getDateStr = d => d.toISOString().split("T")[0];
 
-// ステータス色
+// ==========================
+// 月表示用（変更なし）
+// ==========================
 const STATUS_COLORS = {
     "商談待ち": "#2196F3",
     "返答待ち": "#03A9F4",
@@ -75,13 +82,10 @@ const STATUS_COLORS = {
 };
 const STATUSES = Object.keys(STATUS_COLORS);
 
-// ==========================
-// 日付ごとの件数HTML生成
-// ==========================
-function buildSummaryHTML(date) {
+function buildMonthSummary(date) {
     const dateStr = getDateStr(date);
     const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
-    if(dayEvents.length === 0) return null;
+    if (!dayEvents.length) return null;
 
     const countMap = {};
     STATUSES.forEach(s => countMap[s] = 0);
@@ -90,12 +94,12 @@ function buildSummaryHTML(date) {
     const wrap = document.createElement("div");
     wrap.className = "summary-wrap";
 
-    STATUSES.forEach(status => {
-        if(countMap[status] === 0) return;
+    STATUSES.forEach(s => {
+        if (!countMap[s]) return;
         const div = document.createElement("div");
         div.className = "summary";
-        div.style.background = STATUS_COLORS[status];
-        div.textContent = `${status} ${countMap[status]}件`;
+        div.style.background = STATUS_COLORS[s];
+        div.textContent = `${s} ${countMap[s]}件`;
         wrap.appendChild(div);
     });
 
@@ -103,21 +107,48 @@ function buildSummaryHTML(date) {
 }
 
 // ==========================
-// 月・週・日 共通描画
+// ヒートカラー（最大5）
 // ==========================
-function renderAllViews(info) {
-    const summary = buildSummaryHTML(info.date);
-    if(!summary) return;
-
-    if(info.view.type === "dayGridMonth") {
-        info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(summary);
-    } else {
-        info.el.prepend(summary);
-    }
+function getHeatColor(count) {
+    if (count >= 5) return "#E53935";
+    if (count === 4) return "#FB8C00";
+    if (count === 3) return "#FBC02D";
+    if (count === 2) return "#64B5F6";
+    return "#42A5F5";
 }
 
 // ==========================
-// カレンダー初期化
+// 週・日：30分単位 疑似イベント生成
+// ==========================
+function generateTimeSlotHeatEvents() {
+    const map = {};
+
+    RAW_EVENTS.forEach(e => {
+        const d = new Date(e.start);
+        d.setSeconds(0);
+        d.setMilliseconds(0);
+
+        const key = d.toISOString();
+        map[key] = (map[key] || 0) + 1;
+    });
+
+    return Object.entries(map).map(([iso, count]) => {
+        const start = new Date(iso);
+        const end = new Date(start.getTime() + 30 * 60000);
+
+        return {
+            start,
+            end,
+            title: `${Math.min(count, 5)}件`,
+            backgroundColor: getHeatColor(count),
+            borderColor: getHeatColor(count),
+            textColor: "#fff"
+        };
+    });
+}
+
+// ==========================
+// カレンダー
 // ==========================
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
     locale: "ja",
@@ -129,27 +160,37 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
         center: "title",
         right: "dayGridMonth,timeGridWeek,timeGridDay"
     },
-    buttonText: {
-        today: "今日",
-        month: "月",
-        week: "週",
-        day: "日"
-    },
 
     nowIndicator: true,
     allDaySlot: false,
     slotMinTime: "08:00:00",
     slotMaxTime: "20:00:00",
 
-    dayCellDidMount: renderAllViews,
+    // 月表示
+    dayCellDidMount(info) {
+        if (info.view.type !== "dayGridMonth") return;
+        const summary = buildMonthSummary(info.date);
+        if (summary) {
+            info.el.querySelector(".fc-daygrid-day-frame")
+                ?.appendChild(summary);
+        }
+    },
 
-    dateClick: info => {
+    // 週・日表示
+    events(info, success) {
+        if (["timeGridWeek","timeGridDay"].includes(info.view.type)) {
+            success(generateTimeSlotHeatEvents());
+        } else {
+            success([]);
+        }
+    },
+
+    dateClick(info) {
         calendar.changeView("timeGridDay", info.dateStr);
     }
 });
 
 calendar.render();
 </script>
-
 </body>
 </html>
