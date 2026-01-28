@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>社員向けアポ取りフォーム</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+    <h2 class="mb-4">アポ取りフォーム</h2>
+    <form method="POST" action="{{ url_for('submit') }}">
+        <!-- 店舗名 -->
+        <div class="mb-3">
+            <label for="Name" class="form-label">店舗名</label>
+            <input type="text" class="form-control" id="Name" name="Name" required>
+        </div>
+
+        <!-- 店舗電話番号 -->
+        <div class="mb-3">
+            <label for="X1__c" class="form-label">店舗電話番号</label>
+            <input type="tel" class="form-control" id="X1__c" name="X1__c">
+        </div>
+
+        <!-- オーナー名 -->
+        <div class="mb-3">
+            <label for="Field327__c" class="form-label">オーナー名</label>
+            <input type="text" class="form-control" id="Field327__c" name="Field327__c">
+        </div>
+
+        <!-- オーナー連絡先 -->
+        <div class="mb-3">
+            <label for="Field328__c" class="form-label">オーナー連絡先</label>
+            <input type="tel" class="form-control" id="Field328__c" name="Field328__c">
+        </div>
+
+        <!-- 商談希望日 -->
+        <div class="mb-3">
+            <label for="Field24__c" class="form-label">商談希望日</label>
+            <input type="date" class="form-control" id="Field24__c" name="Field24__c">
+        </div>
+
+        <!-- 商談希望時間 -->
+        <div class="mb-3">
+            <label for="Field25__c" class="form-label">商談希望時間</label>
+            <input type="time" class="form-control" id="Field25__c" name="Field25__c">
+        </div>
+
+        <!-- 獲得者（ログインID） -->
+        <input type="hidden" name="Field207__c" value="{{ basic_auth_user_id }}">
+
+        <button type="submit" class="btn btn-primary">送信</button>
+    </form>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
