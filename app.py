@@ -1110,6 +1110,12 @@ def corporateform_submit():
         "Field328__c": owner_phone,
         "Field24__c": call_date,
         "Field207__c": login_id,  # 獲得者はログインID
+
+        # ---------- 必須項目自動セット ----------
+        "Field56__c": "希望無し",
+        "Field76__c": "a05TL0000117wNyYAI",
+        "Field78__c": "新設",
+        # ---------------------------------------
     }
 
     # 時間（Time型）整形
@@ -1130,7 +1136,6 @@ def corporateform_submit():
         flash(f"レコード作成に失敗しました: {str(e)}", "danger")
 
     return redirect(url_for('corporateform'))
-
 
 
 @app.route("/zoom_create", methods=["POST"])
