@@ -13,16 +13,11 @@ body {
     font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
 }
 
-/* 土日 */
-.fc-day-sun { background: rgba(244, 67, 54, 0.06); }
-.fc-day-sat { background: rgba(33, 150, 243, 0.06); }
+.fc-day-sun { background: rgba(244,67,54,0.06); }
+.fc-day-sat { background: rgba(33,150,243,0.06); }
 
-/* 月ビュー高さ */
-.fc-daygrid-day-frame {
-    min-height: 140px;
-}
+.fc-daygrid-day-frame { min-height: 140px; }
 
-/* 合計件数ラベル */
 .total-box {
     margin-top: 8px;
     padding: 10px;
@@ -33,10 +28,7 @@ body {
     text-align: center;
 }
 
-/* 時間枠を広げる */
-.fc-timegrid-slot {
-    height: 48px !important;
-}
+.fc-timegrid-slot { height: 48px !important; }
 </style>
 </head>
 
@@ -44,80 +36,86 @@ body {
 <div id="calendar"></div>
 
 <script>
-// ==========================
-// サーバーデータ
-// ==========================
 const RAW_EVENTS_ORIG = {{ events | tojson }};
 
-// 時刻補正 -6h
+// -6h補正
 const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
     const d = new Date(e.start);
     d.setHours(d.getHours() - 6);
     return { ...e, start: d };
 });
 
-// util
 const dateStr = d => d.toISOString().split("T")[0];
 
-// ==========================
 // ヒートカラー
-// ==========================
-function heatColor(count) {
-    if(count <= 0) return "";
-    if(count === 1) return "#E3F2FD";
-    if(count === 2) return "#90CAF9";
-    if(count === 3) return "#FFCC80";
-    if(count === 4) return "#FF8A65";
-    return "#E53935";
+function heatColor(c){
+    if(c === 1) return "#E3F2FD";
+    if(c === 2) return "#90CAF9";
+    if(c === 3) return "#FFCC80";
+    if(c === 4) return "#FF8A65";
+    if(c >= 5) return "#E53935";
+    return "";
 }
 
-// ==========================
-// 月：日ごとの最大同時間件数
-// ==========================
-function getDayMaxOverlap(date) {
-    const dayEvents = RAW_EVENTS.filter(e => dateStr(e.start) === dateStr(date));
+// ======================
+// 月：日ごとの最大同時間
+// ======================
+function getDayMaxOverlap(date){
     const map = {};
-    dayEvents.forEach(e => {
-        const h = new Date(e.start).getHours();
-        map[h] = (map[h] || 0) + 1;
-    });
+    RAW_EVENTS
+        .filter(e => dateStr(e.start) === dateStr(date))
+        .forEach(e => {
+            const h = new Date(e.start).getHours();
+            map[h] = (map[h] || 0) + 1;
+        });
     return Math.max(0, ...Object.values(map));
 }
 
-// ==========================
-// 月：日セル描画
-// ==========================
-function renderMonthCell(info) {
+function renderMonth(info){
     if(info.view.type !== "dayGridMonth") return;
-
     const dayEvents = RAW_EVENTS.filter(e => dateStr(e.start) === dateStr(info.date));
     if(dayEvents.length === 0) return;
 
-    const maxOverlap = getDayMaxOverlap(info.date);
-    const box = document.createElement("div");
-    box.className = "total-box";
-    box.style.background = heatColor(maxOverlap);
-    box.textContent = `${dayEvents.length}件`;
+    const max = getDayMaxOverlap(info.date);
+    const div = document.createElement("div");
+    div.className = "total-box";
+    div.style.background = heatColor(max);
+    div.textContent = `${dayEvents.length}件`;
 
-    info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(box);
+    info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(div);
 }
 
-// ==========================
-// 週・日：時間帯件数マップ
-// ==========================
-function buildTimeCountMap() {
+// ======================
+// ★ 週・日：疑似イベント生成
+// ======================
+function buildTimeEvents(){
     const map = {};
-    RAW_EVENTS.forEach(e => {
-        const h = new Date(e.start).getHours();
-        map[h] = (map[h] || 0) + 1;
-    });
-    return map;
-}
-const TIME_COUNT_MAP = buildTimeCountMap();
 
-// ==========================
+    RAW_EVENTS.forEach(e => {
+        const d = new Date(e.start);
+        d.setMinutes(0,0,0);
+        const key = d.toISOString();
+        map[key] = (map[key] || 0) + 1;
+    });
+
+    return Object.entries(map).map(([iso, count]) => {
+        const start = new Date(iso);
+        const end = new Date(start.getTime() + 60*60000);
+
+        return {
+            start,
+            end,
+            title: `${count}件`,
+            backgroundColor: heatColor(count),
+            borderColor: heatColor(count),
+            textColor: "#000"
+        };
+    });
+}
+
+// ======================
 // カレンダー
-// ==========================
+// ======================
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
     locale: "ja",
     initialView: "dayGridMonth",
@@ -128,31 +126,17 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
         center: "title",
         right: "dayGridMonth,timeGridWeek,timeGridDay"
     },
-    buttonText: {
-        today: "今日",
-        month: "月",
-        week: "週",
-        day: "日"
-    },
 
     nowIndicator: true,
     allDaySlot: false,
     slotMinTime: "08:00:00",
     slotMaxTime: "20:00:00",
 
-    dayCellDidMount: renderMonthCell,
+    dayCellDidMount: renderMonth,
 
-    slotLaneDidMount(info) {
-        if(!info.view.type.startsWith("timeGrid")) return;
-        const h = info.date.getHours();
-        const count = TIME_COUNT_MAP[h] || 0;
-        const color = heatColor(count);
-        if(color) info.el.style.background = color;
-    },
+    events: buildTimeEvents(),
 
-    dateClick: info => {
-        calendar.changeView("timeGridDay", info.dateStr);
-    }
+    dateClick: info => calendar.changeView("timeGridDay", info.dateStr)
 });
 
 calendar.render();
