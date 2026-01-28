@@ -1010,3 +1010,69 @@ def schedule():
             "record_id": r["id"]
         })
     return render_template("schedule.html", events=events)
+
+
+
+@app.route('/corporateform')
+@login_required
+def corporateform():
+    login_id = session.get('username')
+    if not login_id:
+        flash("ログイン情報がありません")
+        return redirect(url_for('login'))
+
+    today = datetime.now(JST).date().isoformat()
+
+    return render_template(
+        'corporateform.html',
+        today=today,
+        login_id=login_id
+    )
+
+
+@app.route('/corporateform/submit', methods=['POST'])
+@login_required
+def corporateform_submit():
+    login_id = session.get('username')
+    if not login_id:
+        flash("ログイン情報がありません")
+        return redirect(url_for('login'))
+
+    # フォーム値取得
+    name = request.form.get('Name')
+    phone = request.form.get('X1__c')
+    owner_name = request.form.get('Field327__c')
+    owner_phone = request.form.get('Field328__c')
+    call_date = request.form.get('Field24__c')
+    call_time = request.form.get('Field25__c')
+
+    # Salesforce送信用データ
+    account_data = {
+        "Name": name,
+        "X1__c": phone,
+        "Field327__c": owner_name,
+        "Field328__c": owner_phone,
+        "Field24__c": call_date,
+        "Field207__c": login_id,  # ★ 獲得者はログインID
+    }
+
+    # 時間（Time型）整形
+    if call_time:
+        try:
+            t = datetime.strptime(call_time, "%H:%M")
+            # Salesforce Time は UTC 扱いなので JST → UTC
+            dt_jst = datetime(2024, 1, 1, t.hour, t.minute)
+            dt_utc = dt_jst - timedelta(hours=9)
+            account_data["Field25__c"] = dt_utc.strftime("%H:%M:%S")
+        except Exception:
+            account_data["Field25__c"] = None
+
+    try:
+        result = sf.Account.create(account_data)
+        flash(f"法人フォーム登録が完了しました（ID: {result['id']}）", "success")
+        return redirect(url_for('menu_page'))
+
+    except Exception as e:
+        flash(f"登録エラー: {str(e)}", "danger")
+        return redirect(url_for('corporateform'))
+
