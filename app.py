@@ -49,6 +49,10 @@ field76_map = {
 
 BASIC_AUTH_PASSWORD = "gift2025"
 
+ZOOM_ACCOUNT_ID = os.getenv("ZOOM_ACCOUNT_ID")
+ZOOM_CLIENT_ID = os.getenv("ZOOM_CLIENT_ID")
+ZOOM_CLIENT_SECRET = os.getenv("ZOOM_CLIENT_SECRET")
+
 # セッション有効期限確認・更新
 @app.before_request
 def check_session_timeout():
@@ -202,6 +206,58 @@ def round_time_30min(dt):
         dt = dt.replace(hour=(dt.hour + 1) % 24)
         minute = 0
     return dt.replace(minute=minute, second=0, microsecond=0)
+
+
+
+
+def get_zoom_access_token():
+    """
+    Zoom Server-to-Server OAuthでアクセストークン取得
+    """
+    url = "https://zoom.us/oauth/token"
+    headers = {
+        "Authorization": f"Basic {requests.auth._basic_auth_str(ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET)}"
+    }
+    params = {
+        "grant_type": "account_credentials",
+        "account_id": ZOOM_ACCOUNT_ID
+    }
+
+    resp = requests.post(url, headers=headers, params=params)
+    resp.raise_for_status()
+    data = resp.json()
+    return data["access_token"]
+
+
+
+def create_zoom_meeting(topic, start_datetime_utc, duration_minutes=60):
+    """
+    Zoom ミーティング作成
+    """
+    token = get_zoom_access_token()
+    url = f"https://api.zoom.us/v2/users/me/meetings"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "topic": topic,
+        "type": 2,  # スケジュールミーティング
+        "start_time": start_datetime_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "duration": duration_minutes,
+        "timezone": "UTC",
+        "settings": {
+            "host_video": True,
+            "participant_video": True,
+            "join_before_host": False,
+            "mute_upon_entry": True
+        }
+    }
+
+    resp = requests.post(url, headers=headers, data=json.dumps(payload))
+    resp.raise_for_status()
+    return resp.json()
 
 
 
@@ -1029,8 +1085,8 @@ def corporateform():
         login_id=login_id
     )
 
-
-@app.route('/corporateform/submit', methods=['POST'])
+# submit 名前と重複しないように変更
+@app.route('/corporateform_submit', methods=['POST'])
 @login_required
 def corporateform_submit():
     login_id = session.get('username')
@@ -1053,7 +1109,7 @@ def corporateform_submit():
         "Field327__c": owner_name,
         "Field328__c": owner_phone,
         "Field24__c": call_date,
-        "Field207__c": login_id,  # ★ 獲得者はログインID
+        "Field207__c": login_id,  # 獲得者はログインID
     }
 
     # 時間（Time型）整形
@@ -1063,16 +1119,26 @@ def corporateform_submit():
             # Salesforce Time は UTC 扱いなので JST → UTC
             dt_jst = datetime(2024, 1, 1, t.hour, t.minute)
             dt_utc = dt_jst - timedelta(hours=9)
-            account_data["Field25__c"] = dt_utc.strftime("%H:%M:%S")
+            account_data['Field25__c'] = dt_utc.strftime("%H:%M:%S")
         except Exception:
-            account_data["Field25__c"] = None
+            account_data['Field25__c'] = None
 
     try:
         result = sf.Account.create(account_data)
-        flash(f"法人フォーム登録が完了しました（ID: {result['id']}）", "success")
-        return redirect(url_for('menu_page'))
-
+        flash(f"レコード作成成功。ID: {result['id']}", "success")
     except Exception as e:
-        flash(f"登録エラー: {str(e)}", "danger")
-        return redirect(url_for('corporateform'))
+        flash(f"レコード作成に失敗しました: {str(e)}", "danger")
+
+    return redirect(url_for('corporateform'))
+
+
+
+@app.route("/zoom_create", methods=["POST"])
+@login_required
+def zoom_create():
+    topic = request.form.get("topic")
+    start = datetime.strptime(request.form.get("start"), "%Y-%m-%dT%H:%M")
+    start_utc = start - timedelta(hours=9)  # JST→UTC
+    meeting = create_zoom_meeting(topic, start_utc)
+    return jsonify(meeting)
 
