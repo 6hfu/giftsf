@@ -42,24 +42,21 @@ const RAW_EVENTS = {{ events | tojson | safe }};
 
 // 件数に応じたグラデーション色
 function getColorByCount(count) {
-    const maxCount = 10; // 最大件数
+    const maxCount = 10;
     const ratio = Math.min(count / maxCount, 1);
 
     let r, g, b;
 
     if (ratio < 0.3) {
-        // 少ない件数＝やさしい水色→黄緑
         r = Math.round(144 + (173-144)*(ratio/0.3));
         g = Math.round(202 + (255-202)*(ratio/0.3));
         b = Math.round(249 + (47-249)*(ratio/0.3));
     } else if (ratio < 0.7) {
-        // 中くらい＝黄緑→オレンジ
         const rRatio = (ratio-0.3)/0.4;
         r = Math.round(173 + (255-173)*rRatio);
         g = Math.round(255 - (255-152)*rRatio);
         b = Math.round(47 - (47-0)*rRatio);
     } else {
-        // 多い＝オレンジ→赤
         const rRatio = (ratio-0.7)/0.3;
         r = 255;
         g = Math.round(152 - (152*rRatio));
@@ -77,17 +74,20 @@ function getTextColor(bgColor) {
 }
 
 // ==========================
-// 30分単位で件数集計イベント生成
+// 30分単位で件数集計イベント生成 (+9時間補正)
 // ==========================
 function generateSummaryEvents() {
-    const summaryMap = {}; // 日付 -> 時間 -> 件数
+    const summaryMap = {};
 
     RAW_EVENTS.forEach(ev => {
-        // UTC補正を避けるため文字列操作
-        const [dateStr, timeStr] = ev.start.split('T');
-        const hour = timeStr.slice(0,2);
-        const minute = timeStr.slice(3,5);
-        const timeKey = `${hour}:${minute==='00'?'00':'30'}`;
+        // ev.start は ISO 文字列
+        let dt = new Date(ev.start);
+        dt.setHours(dt.getHours() + 9); // 強制 +9時間
+
+        const dateStr = dt.toISOString().split("T")[0];
+        const hour = dt.getHours();
+        const minute = dt.getMinutes() < 30 ? 0 : 30;
+        const timeKey = `${String(hour).padStart(2,'0')}:${minute===0?'00':'30'}`;
 
         if (!summaryMap[dateStr]) summaryMap[dateStr] = {};
         if (!summaryMap[dateStr][timeKey]) summaryMap[dateStr][timeKey] = 0;
@@ -95,12 +95,10 @@ function generateSummaryEvents() {
     });
 
     const summaryEvents = [];
-
     for (const date in summaryMap) {
         for (const time in summaryMap[date]) {
             const count = summaryMap[date][time];
-            const [hour, minute] = time.split(':');
-
+            const [hour, minute] = time.split(":");
             let endHour = parseInt(hour);
             let endMinute = parseInt(minute) + 30;
             if (endMinute === 60) { endHour += 1; endMinute = 0; }
@@ -139,13 +137,19 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
             click: function () {
                 window.location.href = "https://giftsf.onrender.com/corporateform";
             }
+        },
+        backmenu: {
+            text: "メニューに戻る",
+            click: function () {
+                window.location.href = "https://giftsf.onrender.com/menu";
+            }
         }
     },
 
     headerToolbar: {
         left: "prev,next today",
         center: "title",
-        right: "corporateform"
+        right: "backmenu,corporateform"
     },
 
     buttonText: {
