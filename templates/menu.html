@@ -79,11 +79,18 @@
         <p>所属部署: {{ department }}</p>
 
         
-        {% if company_name == "テスト会社" %}
-            <a href="{{ url_for('form2') }}" class="btn btn-primary mb-3">受注登録</a>
+        <!-- 受注登録ボタンまたは法人部署ボタン切り替え -->
+        {% if department == "法人部署" %}
+            <a href="{{ url_for('schedule') }}" class="btn btn-primary mb-3">商談カレンダー</a>
+            <a href="{{ url_for('corporateform') }}" class="btn btn-primary mb-3">商談登録</a>
         {% else %}
-            <a href="{{ url_for('form') }}" class="btn btn-primary mb-3">受注登録</a>
+            {% if company_name == "テスト会社" %}
+                <a href="{{ url_for('form2') }}" class="btn btn-primary mb-3">受注登録</a>
+            {% else %}
+                <a href="{{ url_for('form') }}" class="btn btn-primary mb-3">受注登録</a>
+            {% endif %}
         {% endif %}
+
 
 
         <!-- 登録済みレコード一覧ボタン -->
