@@ -1103,6 +1103,7 @@ def corporateform():
 def corporateform_submit():
     login_id = session.get('username')
 
+    # フォームデータ取得
     name = request.form.get('Name')
     phone = request.form.get('X1__c')
     owner_name = request.form.get('Field327__c')
@@ -1110,6 +1111,7 @@ def corporateform_submit():
     call_date = request.form.get('Field24__c')   # yyyy-mm-dd
     call_time = request.form.get('Field25__c')   # HH:MM
 
+    # Salesforce登録用データ
     account_data = {
         "Name": name,
         "X1__c": phone,
@@ -1123,14 +1125,10 @@ def corporateform_submit():
         "Field78__c": "新設",
     }
 
-    # Salesforce へ反映する日付・時間（+9時間 JST調整）
+    # Salesforce登録用にJSTそのままDate/Timeをセット
     if call_date and call_time:
-        dt_jst = datetime.strptime(f"{call_date} {call_time}", "%Y-%m-%d %H:%M")
-        dt_jst_plus9 = dt_jst + timedelta(hours=9)  # +9時間
-
-        # Salesforce 登録用に文字列に変換
-        account_data["Field24__c"] = dt_jst_plus9.strftime("%Y-%m-%d")
-        account_data["Field25__c"] = dt_jst_plus9.strftime("%H:%M")
+        account_data["Field24__c"] = call_date  # Date型
+        account_data["Field25__c"] = call_time  # Time型
 
     try:
         # Salesforce 作成
@@ -1138,12 +1136,15 @@ def corporateform_submit():
         account_id = result["id"]
 
         zoom_invite = ""
-        # Zoom 作成
+        meeting = None
+
+        # Zoomミーティング作成
         if call_date and call_time:
+            # JST → UTC変換
             start_jst = datetime.strptime(f"{call_date} {call_time}", "%Y-%m-%d %H:%M")
             start_utc = start_jst - timedelta(hours=9)
 
-            # Zoomミーティング名を固定
+            # Zoomミーティング作成（固定トピック名）
             meeting = create_zoom_meeting(
                 topic="【オンライン取材】店舗の魅力をお聞かせください",
                 start_datetime_utc=start_utc
@@ -1156,7 +1157,7 @@ def corporateform_submit():
                 f"ミーティングID：{meeting['id']}"
             )
 
-            # Salesforce 更新（Zoom情報のみ反映）
+            # Salesforce更新（Zoom情報のみ反映）
             sf.Account.update(account_id, {
                 "Field351__c": zoom_invite
             })
@@ -1165,7 +1166,8 @@ def corporateform_submit():
 
     except Exception as e:
         message = f"エラーが発生しました: {str(e)}"
+        meeting = None
 
     # 完了画面にメッセージとZoom URLを渡す
-    return render_template('result.html', message=message, zoom_url=meeting['join_url'] if zoom_invite else None)
+    return render_template('result.html', message=message, zoom_url=meeting['join_url'] if meeting else None)
 
