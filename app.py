@@ -1103,15 +1103,13 @@ def corporateform():
 def corporateform_submit():
     login_id = session.get('username')
 
-    # フォームデータ取得
     name = request.form.get('Name')
     phone = request.form.get('X1__c')
     owner_name = request.form.get('Field327__c')
     owner_phone = request.form.get('Field328__c')
     call_date = request.form.get('Field24__c')   # yyyy-mm-dd
-    call_time = request.form.get('Field25__c')   # HH:MM
+    call_time = request.form.get('Field25__c')   # HH:MM（JST）
 
-    # Salesforce登録用データ
     account_data = {
         "Name": name,
         "X1__c": phone,
@@ -1119,55 +1117,58 @@ def corporateform_submit():
         "Field328__c": owner_phone,
         "Field207__c": login_id,
 
-        # 必須項目
         "Field56__c": "希望無し",
         "Field76__c": "a05TL0000117wNyYAI",
         "Field78__c": "新設",
     }
 
-    # Salesforce登録用にJSTそのままDate/Timeをセット
-    if call_date and call_time:
-        account_data["Field24__c"] = call_date  # Date型
-        account_data["Field25__c"] = call_time  # Time型
+    meeting = None
+    zoom_invite = ""
 
     try:
+        # ▼ Date / Time 設定（ここが超重要）
+        if call_date and call_time:
+            # Dateはそのまま
+            account_data["Field24__c"] = call_date
+
+            # JST → UTC に変換して Time 型に保存
+            jst_dt = datetime.strptime(f"{call_date} {call_time}", "%Y-%m-%d %H:%M")
+            utc_dt = jst_dt - timedelta(hours=9)
+
+            # Time型は HH:MM:SS.000Z 形式
+            account_data["Field25__c"] = utc_dt.strftime("%H:%M:%S.000Z")
+
         # Salesforce 作成
         result = sf.Account.create(account_data)
         account_id = result["id"]
 
-        zoom_invite = ""
-        meeting = None
-
         # Zoomミーティング作成
         if call_date and call_time:
-            # JST → UTC変換
-            start_jst = datetime.strptime(f"{call_date} {call_time}", "%Y-%m-%d %H:%M")
-            start_utc = start_jst - timedelta(hours=9)
-
-            # Zoomミーティング作成（固定トピック名）
             meeting = create_zoom_meeting(
                 topic="【オンライン取材】店舗の魅力をお聞かせください",
-                start_datetime_utc=start_utc
+                start_datetime_utc=utc_dt
             )
 
             zoom_invite = (
-                f"【オンライン取材】店舗の魅力をお聞かせください\n"
-                f"日時：{start_jst.strftime('%Y/%m/%d %H:%M')}\n"
+                "【オンライン取材】店舗の魅力をお聞かせください\n"
+                f"日時：{jst_dt.strftime('%Y/%m/%d %H:%M')}\n"
                 f"参加URL：{meeting['join_url']}\n"
                 f"ミーティングID：{meeting['id']}"
             )
 
-            # Salesforce更新（Zoom情報のみ反映）
             sf.Account.update(account_id, {
                 "Field351__c": zoom_invite
             })
 
-        message = "Salesforce作成＆Zoomミーティング発行が完了しました" if zoom_invite else "Salesforce作成が完了しました"
+        message = "Salesforce作成＆Zoomミーティング発行が完了しました" if meeting else "Salesforce作成が完了しました"
 
     except Exception as e:
         message = f"エラーが発生しました: {str(e)}"
         meeting = None
 
-    # 完了画面にメッセージとZoom URLを渡す
-    return render_template('result.html', message=message, zoom_url=meeting['join_url'] if meeting else None)
+    return render_template(
+        'result.html',
+        message=message,
+        zoom_url=meeting['join_url'] if meeting else None
+    )
 
