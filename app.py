@@ -1129,6 +1129,7 @@ def corporateform_submit():
         result = sf.Account.create(account_data)
         account_id = result["id"]
 
+        zoom_invite = ""
         # Zoom 作成
         if call_date and call_time:
             start_jst = datetime.strptime(
@@ -1143,22 +1144,22 @@ def corporateform_submit():
             )
 
             zoom_invite = (
-                f"【Zoom商談】\n"
+                f"【オンライン取材】店舗の魅力をお聞かせください\n"
                 f"日時：{start_jst.strftime('%Y/%m/%d %H:%M')}\n"
                 f"参加URL：{meeting['join_url']}\n"
                 f"ミーティングID：{meeting['id']}"
             )
 
+            # Salesforce 更新
             sf.Account.update(account_id, {
                 "Field351__c": zoom_invite
             })
 
-        flash("Salesforce作成＆Zoomミーティング発行が完了しました", "success")
+        message = "Salesforce作成＆Zoomミーティング発行が完了しました" if zoom_invite else "Salesforce作成が完了しました"
 
     except Exception as e:
-        flash(f"エラーが発生しました: {str(e)}", "danger")
+        message = f"エラーが発生しました: {str(e)}"
 
-    return redirect(url_for('corporateform'))
-
-
+    # 完了画面にメッセージを渡して表示
+    return render_template('result.html', message=message)
 
