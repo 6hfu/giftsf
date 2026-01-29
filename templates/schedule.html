@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>商談カレンダー（週・日）</title>
+<title>商談カレンダー（週）</title>
 
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
@@ -13,16 +13,14 @@ body {
     font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
 }
 
-/* ===== 土日背景 ===== */
+/* 土日背景 */
 .fc-day-sun { background: rgba(244, 67, 54, 0.06); }
 .fc-day-sat { background: rgba(33, 150, 243, 0.06); }
 
-/* ===== 週・日ビュー：時間枠を広げる ===== */
-.fc-timegrid-slot {
-    height: 48px !important;
-}
+/* 週ビュー：時間枠の高さ */
+.fc-timegrid-slot { height: 48px !important; }
 
-/* ===== 事件イベントスタイル ===== */
+/* 件数イベントスタイル */
 .summary-event {
     font-size: 12px;
     font-weight: bold;
@@ -41,66 +39,55 @@ body {
 // ==========================
 // サーバーから取得したイベント
 // ==========================
-const RAW_EVENTS_ORIG = {{ events | tojson | safe }};
+const RAW_EVENTS = {{ events | tojson | safe }};
 
-// ===== 時刻補正（-6時間）=====
-const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
-    const d = new Date(e.start);
-    d.setHours(d.getHours() - 6);
-    return { ...e, start: d };
-});
-
-// ステータス色
-const STATUS_COLORS = {
-    "商談待ち": "#2196F3",
-    "返答待ち": "#03A9F4",
-    "リスケ": "#FF9800",
-    "留守": "#FFC107"
-};
-const STATUSES = Object.keys(STATUS_COLORS);
+// 件数に応じたグラデーション色
+function getColorByCount(count) {
+    if (count >= 10) return "#f44336"; // 赤
+    if (count >= 7)  return "#ff9800"; // オレンジ
+    if (count >= 5)  return "#ffeb3b"; // 黄色
+    if (count >= 3)  return "#1976d2"; // 濃青
+    return "#90caf9";                    // 薄青
+}
 
 // ==========================
-// 時間帯ごとの件数集計イベント作成
+// 30分単位で件数集計イベント生成
 // ==========================
 function generateSummaryEvents() {
+    const summaryMap = {}; // 日付 -> 時間 -> 件数
+    RAW_EVENTS.forEach(ev => {
+        const d = new Date(ev.start);
+        const dateStr = d.toISOString().split("T")[0];
+        const hour = d.getHours();
+        const minute = d.getMinutes();
+        const timeKey = `${String(hour).padStart(2,'0')}:${minute===0?'00':'30'}`;
+
+        if (!summaryMap[dateStr]) summaryMap[dateStr] = {};
+        if (!summaryMap[dateStr][timeKey]) summaryMap[dateStr][timeKey] = 0;
+        summaryMap[dateStr][timeKey]++;
+    });
+
     const summaryEvents = [];
-
-    // 08:00〜20:00 までの時間帯
-    for (let hour = 8; hour <= 20; hour++) {
-        // 日付ごとにまとめる
-        const dayMap = {};
-
-        RAW_EVENTS.forEach(ev => {
-            const d = new Date(ev.start);
-            const dateStr = d.toISOString().split("T")[0];
-            if (!dayMap[dateStr]) dayMap[dateStr] = {};
-            if (!dayMap[dateStr][hour]) dayMap[dateStr][hour] = {};
-            if (!dayMap[dateStr][hour][ev.status]) dayMap[dateStr][hour][ev.status] = 0;
-            dayMap[dateStr][hour][ev.status]++;
-        });
-
-        // イベント化
-        for (const dateStr in dayMap) {
-            const counts = dayMap[dateStr][hour];
-            if (!counts) continue;
-
-            const total = Object.values(counts).reduce((a,b)=>a+b,0);
-            let color = "#2196F3"; // デフォルト
-
-            // 件数が多いと色を濃くする
-            if (total >= 5) color = "#0D47A1";
-            else if (total >= 3) color = "#1976D2";
-            else color = "#42A5F5";
-
-            let text = Object.entries(counts).map(([status,count]) => `${status}:${count}`).join(" ");
+    for (const date in summaryMap) {
+        for (const time in summaryMap[date]) {
+            const count = summaryMap[date][time];
+            const [h,m] = time.split(":");
+            const start = `${date}T${h}:${m}:00`;
+            let endHour = parseInt(h);
+            let endMinute = parseInt(m) + 30;
+            if (endMinute === 60) {
+                endHour += 1;
+                endMinute = 0;
+            }
+            const end = `${date}T${String(endHour).padStart(2,'0')}:${String(endMinute).padStart(2,'0')}:00`;
 
             summaryEvents.push({
-                title: text,
-                start: `${dateStr}T${String(hour).padStart(2,'0')}:00:00`,
-                end: `${dateStr}T${String(hour+1).padStart(2,'0')}:00:00`,
+                title: `${count}件`,
+                start: start,
+                end: end,
                 display: 'block',
-                backgroundColor: color,
-                borderColor: color,
+                backgroundColor: getColorByCount(count),
+                borderColor: getColorByCount(count),
                 classNames: ['summary-event'],
             });
         }
@@ -129,13 +116,12 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
     headerToolbar: {
         left: "prev,next today",
         center: "title",
-        right: "corporateform timeGridWeek,timeGridDay"
+        right: "corporateform"
     },
 
     buttonText: {
         today: "今日",
-        week: "週",
-        day: "日"
+        week: "週"
     },
 
     nowIndicator: true,
