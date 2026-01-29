@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>商談カレンダー</title>
+<title>商談カレンダー（週・日）</title>
 
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
@@ -11,27 +11,22 @@
 body {
     background: #f5f7fa;
     font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
-    position: relative;
-    padding-top: 60px; /* メニューに戻るボタン分のスペース */
+    padding-top: 60px;
 }
 
 /* ===== 土日背景 ===== */
 .fc-day-sun { background: rgba(244, 67, 54, 0.06); }
 .fc-day-sat { background: rgba(33, 150, 243, 0.06); }
 
-/* ===== 月ビュー：日セルの高さ確保 ===== */
-.fc-daygrid-day-frame { min-height: 140px; }
-
-/* ===== 件数ラベル共通 ===== */
+/* ===== 件数ラベル ===== */
 .summary-wrap {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-top: 6px;
+    gap: 4px;
 }
 .summary {
     font-size: 12px;
-    padding: 6px 8px;
+    padding: 4px 6px;
     border-radius: 6px;
     color: #fff;
     font-weight: 600;
@@ -40,64 +35,29 @@ body {
 }
 
 /* ===== 週・日ビュー：時間枠を広げる ===== */
-.fc-timegrid-slot { height: 48px !important; }
+.fc-timegrid-slot {
+    height: 48px !important;
+}
 
-/* ===== 商談登録ボタン ===== */
+/* ===== Corporateform ボタン ===== */
 .fc-corporateform-button {
-    background: linear-gradient(135deg, #2196F3, #1E88E5);
+    background: linear-gradient(135deg, #4CAF50, #2E7D32);
     color: #fff !important;
     font-size: 15px;
     font-weight: 700;
     padding: 10px 18px;
     border-radius: 10px;
-    box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     border: none;
-    transition: transform 0.2s, box-shadow 0.2s;
 }
 .fc-corporateform-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 18px rgba(0,0,0,0.25);
-}
-
-/* ===== メニューに戻るボタン ===== */
-.menu-back-button {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    background: #007bff;
-    color: #fff;
-    padding: 8px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    border-radius: 8px;
-    text-decoration: none;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-.menu-back-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.25);
-    background: #0056b3;
-}
-
-/* ===== 週・日ビューのステータスラベル ===== */
-.fc-event-status-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #fff;
-    padding: 2px 4px;
-    border-radius: 4px;
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    z-index: 10;
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
 </style>
 </head>
 
 <body>
-<a href="{{ url_for('menu') }}" class="menu-back-button">メニューに戻る</a>
-
 <div id="calendar"></div>
 
 <script>
@@ -110,33 +70,37 @@ const RAW_EVENTS_ORIG = {{ events | tojson | safe }};
 const RAW_EVENTS = RAW_EVENTS_ORIG.map(e => {
     const d = new Date(e.start);
     d.setHours(d.getHours() - 6);
-    return { ...e, start: d, status: e.status || "不明" };
+    return { ...e, start: d };
 });
 
 // util
 const getDateStr = d => d.toISOString().split("T")[0];
+const getHourStr = d => d.getHours();  // 時間帯を取得
 
 // ステータス色
 const STATUS_COLORS = {
     "商談待ち": "#2196F3",
     "返答待ち": "#03A9F4",
     "リスケ": "#FF9800",
-    "留守": "#FFC107",
-    "不明": "#6c757d"
+    "留守": "#FFC107"
 };
 const STATUSES = Object.keys(STATUS_COLORS);
 
 // ==========================
-// 月ビュー用件数HTML生成
+// 時間帯ごとの件数HTML生成
 // ==========================
-function buildSummaryHTML(date) {
-    const dateStr = getDateStr(date);
-    const dayEvents = RAW_EVENTS.filter(e => getDateStr(e.start) === dateStr);
+function buildTimeSlotSummary(date, hour) {
+    const dayEvents = RAW_EVENTS.filter(e => {
+        const d = new Date(e.start);
+        return getDateStr(d) === getDateStr(date) && d.getHours() === hour;
+    });
     if (dayEvents.length === 0) return null;
 
     const countMap = {};
     STATUSES.forEach(s => countMap[s] = 0);
-    dayEvents.forEach(e => countMap[e.status] !== undefined && countMap[e.status]++);
+    dayEvents.forEach(e => {
+        if (countMap[e.status] !== undefined) countMap[e.status]++;
+    });
 
     const wrap = document.createElement("div");
     wrap.className = "summary-wrap";
@@ -154,13 +118,14 @@ function buildSummaryHTML(date) {
 }
 
 // ==========================
-// 月・週・日 共通描画
+// 時間枠に件数表示
 // ==========================
-function renderAllViews(info) {
-    if (info.view.type === "dayGridMonth") {
-        const summary = buildSummaryHTML(info.date);
-        if (summary) info.el.querySelector(".fc-daygrid-day-frame")?.appendChild(summary);
-    }
+function renderTimeGrid(info) {
+    const hour = info.slotStart.getHours();
+    const summary = buildTimeSlotSummary(info.date, hour);
+    if (!summary) return;
+
+    info.el.appendChild(summary);
 }
 
 // ==========================
@@ -168,18 +133,14 @@ function renderAllViews(info) {
 // ==========================
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
     locale: "ja",
-    initialView: "dayGridMonth",
+    initialView: "timeGridWeek",  // 週ビュー
     height: "auto",
-    nowIndicator: true,
-    allDaySlot: false,
-    slotMinTime: "08:00:00",
-    slotMaxTime: "20:00:00",
 
     customButtons: {
         corporateform: {
             text: "商談登録",
             click: function () {
-                window.location.href = "{{ url_for('corporateform') }}";
+                window.location.href = "https://giftsf.onrender.com/corporateform";
             }
         }
     },
@@ -187,37 +148,24 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
     headerToolbar: {
         left: "prev,next today",
         center: "title",
-        right: "corporateform dayGridMonth,timeGridWeek,timeGridDay"
+        right: "corporateform timeGridWeek,timeGridDay"
     },
 
     buttonText: {
         today: "今日",
-        month: "月",
         week: "週",
         day: "日"
     },
 
-    dayCellDidMount: renderAllViews,
+    nowIndicator: true,
+    allDaySlot: false,
+    slotMinTime: "08:00:00",
+    slotMaxTime: "20:00:00",
 
-    eventDidMount: info => {
-        // 週・日ビューでステータスラベルを表示
-        const status = info.event.extendedProps.status || "不明";
-        const label = document.createElement("div");
-        label.textContent = status;
-        label.className = "fc-event-status-label";
-        label.style.background = STATUS_COLORS[status] || "#6c757d";
-        info.el.appendChild(label);
-    },
-
-    events: RAW_EVENTS,
-
-    dateClick: info => {
-        calendar.changeView("timeGridDay", info.dateStr);
-    }
+    slotLabelDidMount: renderTimeGrid,  // 時間帯に件数表示
 });
 
 calendar.render();
 </script>
-
 </body>
 </html>
