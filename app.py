@@ -1090,52 +1090,64 @@ def corporateform():
 @login_required
 def corporateform_submit():
     login_id = session.get('username')
-    if not login_id:
-        flash("ログイン情報がありません")
-        return redirect(url_for('login'))
 
-    # フォーム値取得
+    # フォーム値
     name = request.form.get('Name')
     phone = request.form.get('X1__c')
     owner_name = request.form.get('Field327__c')
     owner_phone = request.form.get('Field328__c')
-    call_date = request.form.get('Field24__c')
-    call_time = request.form.get('Field25__c')
+    call_date = request.form.get('Field24__c')   # yyyy-mm-dd
+    call_time = request.form.get('Field25__c')   # HH:MM
 
-    # Salesforce送信用データ
+    # Salesforce送信用
     account_data = {
         "Name": name,
         "X1__c": phone,
         "Field327__c": owner_name,
         "Field328__c": owner_phone,
         "Field24__c": call_date,
-        "Field207__c": login_id,  # 獲得者はログインID
+        "Field207__c": login_id,
 
-        # ---------- 必須項目自動セット ----------
+        # 必須項目
         "Field56__c": "希望無し",
         "Field76__c": "a05TL0000117wNyYAI",
         "Field78__c": "新設",
-        # ---------------------------------------
     }
 
-    # 時間（Time型）整形
-    if call_time:
-        try:
-            t = datetime.strptime(call_time, "%H:%M")
-            # Salesforce Time は UTC 扱いなので JST → UTC
-            dt_jst = datetime(2024, 1, 1, t.hour, t.minute)
-            dt_utc = dt_jst - timedelta(hours=9)
-            account_data['Field25__c'] = dt_utc.strftime("%H:%M:%S")
-        except Exception:
-            account_data['Field25__c'] = None
+    # ---------- Salesforce作成 ----------
+    result = sf.Account.create(account_data)
+    account_id = result["id"]
 
-    try:
-        result = sf.Account.create(account_data)
-        flash(f"レコード作成成功。ID: {result['id']}", "success")
-    except Exception as e:
-        flash(f"レコード作成に失敗しました: {str(e)}", "danger")
+    zoom_invite = None
 
+    # ---------- Zoom作成 ----------
+    if call_date and call_time:
+        start_jst = datetime.strptime(
+            f"{call_date} {call_time}",
+            "%Y-%m-%d %H:%M"
+        )
+        start_utc = start_jst - timedelta(hours=9)
+
+        meeting = create_zoom_meeting(
+            topic=f"{name} 商談",
+            start_utc=start_utc
+        )
+
+        zoom_invite = (
+            f"【Zoom商談】\n"
+            f"日時：{start_jst.strftime('%Y/%m/%d %H:%M')}\n"
+            f"参加URL：{meeting['join_url']}\n"
+            f"ミーティングID：{meeting['id']}"
+        )
+
+        # ---------- Zoom招待状を保存 ----------
+        sf.Account.update(account_id, {
+            "Field351__c": zoom_invite
+        })
+
+    flash("レコード作成＆Zoomミーティング作成が完了しました", "success")
     return redirect(url_for('corporateform'))
+
 
 
 @app.route("/zoom_create", methods=["POST"])
