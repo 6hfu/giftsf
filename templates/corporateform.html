@@ -118,7 +118,7 @@
         <!-- 商談希望時間 -->
         <div class="mb-3">
             <label for="Field25__c" class="form-label">商談希望時間 <span class="text-danger-small">※必須</span></label>
-            <input type="time" class="form-control" id="Field25__c" name="Field25__c" required>
+            <input type="time" class="form-control" id="Field25__c" name="Field25__c" required step="1800" min="09:00" max="20:00">
         </div>
 
         <!-- 獲得者（ログインID） -->
@@ -133,6 +133,10 @@
 
 <script>
 $(document).ready(function() {
+    // 今日以降しか選べない
+    const today = new Date().toISOString().split('T')[0];
+    $('#Field24__c').attr('min', today);
+
     const requiredFields = ['Name', 'Field24__c', 'Field25__c'];
 
     $('#appointmentForm').on('submit', function(e) {
