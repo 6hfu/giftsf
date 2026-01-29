@@ -42,28 +42,28 @@ const RAW_EVENTS = {{ events | tojson | safe }};
 
 // 件数に応じたグラデーション色
 function getColorByCount(count) {
-    const maxCount = 10; // 件数上限（調整可能）
-    const ratio = Math.min(count / maxCount, 1); // 0〜1に正規化
+    const maxCount = 10; // 最大件数
+    const ratio = Math.min(count / maxCount, 1);
 
     let r, g, b;
 
     if (ratio < 0.3) {
         // 少ない件数＝やさしい水色→黄緑
-        r = Math.round(144 + (173-144)*(ratio/0.3)); // 144→173
-        g = Math.round(202 + (255-202)*(ratio/0.3)); // 202→255
-        b = Math.round(249 + (47-249)*(ratio/0.3));  // 249→47
+        r = Math.round(144 + (173-144)*(ratio/0.3));
+        g = Math.round(202 + (255-202)*(ratio/0.3));
+        b = Math.round(249 + (47-249)*(ratio/0.3));
     } else if (ratio < 0.7) {
-        // 中くらいの件数＝黄緑→オレンジ
+        // 中くらい＝黄緑→オレンジ
         const rRatio = (ratio-0.3)/0.4;
-        r = Math.round(173 + (255-173)*rRatio); // 173→255
-        g = Math.round(255 - (255-152)*rRatio); // 255→152
-        b = Math.round(47 - (47-0)*rRatio);     // 47→0
+        r = Math.round(173 + (255-173)*rRatio);
+        g = Math.round(255 - (255-152)*rRatio);
+        b = Math.round(47 - (47-0)*rRatio);
     } else {
-        // 多い件数＝オレンジ→赤（危険）
+        // 多い＝オレンジ→赤
         const rRatio = (ratio-0.7)/0.3;
-        r = Math.round(255);                     // 赤固定
-        g = Math.round(152 - (152* rRatio));    // 152→0
-        b = Math.round(0);                       // 黒に寄せる
+        r = 255;
+        g = Math.round(152 - (152*rRatio));
+        b = 0;
     }
 
     return `rgb(${r},${g},${b})`;
@@ -81,12 +81,13 @@ function getTextColor(bgColor) {
 // ==========================
 function generateSummaryEvents() {
     const summaryMap = {}; // 日付 -> 時間 -> 件数
+
     RAW_EVENTS.forEach(ev => {
-        const d = new Date(ev.start);
-        const dateStr = d.toISOString().split("T")[0];
-        const hour = d.getHours();
-        const minute = d.getMinutes();
-        const timeKey = `${String(hour).padStart(2,'0')}:${minute===0?'00':'30'}`;
+        // UTC補正を避けるため文字列操作
+        const [dateStr, timeStr] = ev.start.split('T');
+        const hour = timeStr.slice(0,2);
+        const minute = timeStr.slice(3,5);
+        const timeKey = `${hour}:${minute==='00'?'00':'30'}`;
 
         if (!summaryMap[dateStr]) summaryMap[dateStr] = {};
         if (!summaryMap[dateStr][timeKey]) summaryMap[dateStr][timeKey] = 0;
@@ -94,17 +95,17 @@ function generateSummaryEvents() {
     });
 
     const summaryEvents = [];
+
     for (const date in summaryMap) {
         for (const time in summaryMap[date]) {
             const count = summaryMap[date][time];
-            const [h,m] = time.split(":");
-            const start = `${date}T${h}:${m}:00`;
-            let endHour = parseInt(h);
-            let endMinute = parseInt(m) + 30;
-            if (endMinute === 60) {
-                endHour += 1;
-                endMinute = 0;
-            }
+            const [hour, minute] = time.split(':');
+
+            let endHour = parseInt(hour);
+            let endMinute = parseInt(minute) + 30;
+            if (endMinute === 60) { endHour += 1; endMinute = 0; }
+
+            const start = `${date}T${hour}:${minute}:00`;
             const end = `${date}T${String(endHour).padStart(2,'0')}:${String(endMinute).padStart(2,'0')}:00`;
 
             const bgColor = getColorByCount(count);
