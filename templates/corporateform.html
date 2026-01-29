@@ -73,6 +73,16 @@
         border-color: #dc3545 !important;
         box-shadow: 0 0 0 0.2rem rgba(220,53,69,.25) !important;
     }
+
+    /* 横並び用 */
+    .time-selects {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .time-selects .form-select {
+        flex: 1;
+    }
 </style>
 </head>
 <body>
@@ -116,12 +126,20 @@
             <input type="date" class="form-control" id="Field24__c" name="Field24__c" required>
         </div>
 
-        <!-- 商談希望時間 -->
+        <!-- 商談希望時間（時間・分別） -->
         <div class="mb-3">
-            <label for="Field25__c" class="form-label">商談希望時間 <span class="text-danger-small">※必須</span></label>
-            <select class="form-select" id="Field25__c" name="Field25__c" required>
-                <option value="" selected disabled>選択してください</option>
-            </select>
+            <label class="form-label">商談希望時間 <span class="text-danger-small">※必須</span></label>
+            <div class="time-selects">
+                <select class="form-select" id="Field25_hour" required>
+                    <option value="" selected disabled>時間</option>
+                </select>
+                <select class="form-select" id="Field25_min" required>
+                    <option value="" selected disabled>分</option>
+                    <option value="00">00</option>
+                    <option value="30">30</option>
+                </select>
+            </div>
+            <input type="hidden" name="Field25__c" id="Field25__c">
         </div>
 
         <!-- 獲得者（ログインID） -->
@@ -140,25 +158,15 @@ $(document).ready(function() {
     const today = new Date().toISOString().split('T')[0];
     $('#Field24__c').attr('min', today);
 
-    // 商談希望時間を9:00～20:00、30分刻みで生成
-    const select = document.getElementById('Field25__c');
-    const startHour = 9;
-    const endHour = 20;
-
-    for (let h = startHour; h <= endHour; h++) {
-        ['00', '30'].forEach(min => {
-            if (h === endHour && min === '30') return; // 20:30は除外
-            const time = `${h.toString().padStart(2,'0')}:${min}`;
-            const option = document.createElement('option');
-            option.value = time;
-            option.textContent = time;
-            select.appendChild(option);
-        });
+    // 時間のプルダウン生成（9～20）
+    const hourSelect = $('#Field25_hour');
+    for (let h = 9; h <= 20; h++) {
+        hourSelect.append(`<option value="${h.toString().padStart(2,'0')}">${h.toString().padStart(2,'0')}</option>`);
     }
 
-    // 必須項目チェック
-    const requiredFields = ['Name', 'Field24__c', 'Field25__c'];
+    const requiredFields = ['Name', 'Field24__c', 'Field25_hour', 'Field25_min'];
 
+    // フォーム送信時
     $('#appointmentForm').on('submit', function(e) {
         let isValid = true;
 
@@ -167,7 +175,7 @@ $(document).ready(function() {
             $('#' + field).removeClass('is-invalid');
         });
 
-        // 入力チェック
+        // 必須チェック
         requiredFields.forEach(field => {
             const val = $('#' + field).val();
             if (!val || val.trim() === '') {
@@ -181,6 +189,11 @@ $(document).ready(function() {
             e.preventDefault();
             return false;
         }
+
+        // 時間と分を結合してhiddenにセット
+        const selectedHour = $('#Field25_hour').val();
+        const selectedMin = $('#Field25_min').val();
+        $('#Field25__c').val(`${selectedHour}:${selectedMin}`);
 
         // 送信ボタン制御
         const $btn = $(this).find('button[type="submit"]');
