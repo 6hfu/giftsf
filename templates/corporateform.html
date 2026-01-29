@@ -49,7 +49,8 @@
         transition: all 0.2s ease;
     }
 
-    .form-control:focus {
+    .form-control:focus,
+    .form-select:focus {
         border-color: #86b7fe;
         box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25);
     }
@@ -118,7 +119,9 @@
         <!-- 商談希望時間 -->
         <div class="mb-3">
             <label for="Field25__c" class="form-label">商談希望時間 <span class="text-danger-small">※必須</span></label>
-            <input type="time" class="form-control" id="Field25__c" name="Field25__c" required step="1800" min="09:00" max="20:00">
+            <select class="form-select" id="Field25__c" name="Field25__c" required>
+                <option value="" selected disabled>選択してください</option>
+            </select>
         </div>
 
         <!-- 獲得者（ログインID） -->
@@ -137,6 +140,23 @@ $(document).ready(function() {
     const today = new Date().toISOString().split('T')[0];
     $('#Field24__c').attr('min', today);
 
+    // 商談希望時間を9:00～20:00、30分刻みで生成
+    const select = document.getElementById('Field25__c');
+    const startHour = 9;
+    const endHour = 20;
+
+    for (let h = startHour; h <= endHour; h++) {
+        ['00', '30'].forEach(min => {
+            if (h === endHour && min === '30') return; // 20:30は除外
+            const time = `${h.toString().padStart(2,'0')}:${min}`;
+            const option = document.createElement('option');
+            option.value = time;
+            option.textContent = time;
+            select.appendChild(option);
+        });
+    }
+
+    // 必須項目チェック
     const requiredFields = ['Name', 'Field24__c', 'Field25__c'];
 
     $('#appointmentForm').on('submit', function(e) {
