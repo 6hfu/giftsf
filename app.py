@@ -1126,24 +1126,23 @@ def corporateform_submit():
     zoom_invite = ""
 
     try:
-        # ▼ Date / Time 設定（ここが超重要）
         if call_date and call_time:
-            # Dateはそのまま
+            # Date はそのまま
             account_data["Field24__c"] = call_date
 
-            # JST → UTC に変換して Time 型に保存
+            # ▼ Salesforce Time 用（+9時間して入れる）
             jst_dt = datetime.strptime(f"{call_date} {call_time}", "%Y-%m-%d %H:%M")
-            utc_dt = jst_dt - timedelta(hours=9)
-
-            # Time型は HH:MM:SS.000Z 形式
-            account_data["Field25__c"] = utc_dt.strftime("%H:%M:%S.000Z")
+            sf_time = (jst_dt + timedelta(hours=9)).time()
+            account_data["Field25__c"] = sf_time.strftime("%H:%M:%S")
 
         # Salesforce 作成
         result = sf.Account.create(account_data)
         account_id = result["id"]
 
-        # Zoomミーティング作成
+        # Zoom 用（JST → UTC）
         if call_date and call_time:
+            utc_dt = jst_dt - timedelta(hours=9)
+
             meeting = create_zoom_meeting(
                 topic="【オンライン取材】店舗の魅力をお聞かせください",
                 start_datetime_utc=utc_dt
@@ -1171,4 +1170,3 @@ def corporateform_submit():
         message=message,
         zoom_url=meeting['join_url'] if meeting else None
     )
-
