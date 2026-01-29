@@ -47,23 +47,30 @@
         // ==========================
         const RAW_EVENTS = {{ events | tojson | safe }};
 
-        /* ===== 件数 → 色（業務UI鉄板） ===== */
+        // 件数に応じたグラデーション色
         function getColorByCount(count) {
-            const colors = [
-                '#E3F2FD', // 1
-                '#BBDEFB', // 2
-                '#90CAF9', // 3
-                '#64B5F6', // 4
-                '#FFF59D', // 5
-                '#FFE082', // 6
-                '#FFCC80', // 7
-                '#FFAB91', // 8
-                '#EF9A9A', // 9
-                '#E53935', // 10
-            ];
-            return colors[Math.min(count, 10) - 1];
-        }
+            const maxCount = 10;
+            const ratio = Math.min(count / maxCount, 1);
+            let r, g, b;
 
+            if (ratio < 0.3) {
+                r = Math.round(144 + (173 - 144) * (ratio / 0.3));
+                g = Math.round(202 + (255 - 202) * (ratio / 0.3));
+                b = Math.round(249 + (47 - 249) * (ratio / 0.3));
+            } else if (ratio < 0.7) {
+                const rRatio = (ratio - 0.3) / 0.4;
+                r = Math.round(173 + (255 - 173) * rRatio);
+                g = Math.round(255 - (255 - 152) * rRatio);
+                b = Math.round(47 - (47 - 0) * rRatio);
+            } else {
+                const rRatio = (ratio - 0.7) / 0.3;
+                r = 255;
+                g = Math.round(152 - (152 * rRatio));
+                b = 0;
+            }
+
+            return rgb(${r},${g},${b});
+        }
 
         // 背景色に応じて文字色を白/黒に自動調整
         function getTextColor(bgColor) {
