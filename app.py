@@ -1115,7 +1115,6 @@ def corporateform_submit():
         "X1__c": phone,
         "Field327__c": owner_name,
         "Field328__c": owner_phone,
-        "Field24__c": call_date,
         "Field207__c": login_id,
 
         # 必須項目
@@ -1123,6 +1122,12 @@ def corporateform_submit():
         "Field76__c": "a05TL0000117wNyYAI",
         "Field78__c": "新設",
     }
+
+    # Salesforce へ反映する日付・時間
+    if call_date:
+        account_data["Field24__c"] = call_date  # Date型
+    if call_time:
+        account_data["Field25__c"] = call_time  # Time型
 
     try:
         # Salesforce 作成
@@ -1132,14 +1137,12 @@ def corporateform_submit():
         zoom_invite = ""
         # Zoom 作成
         if call_date and call_time:
-            start_jst = datetime.strptime(
-                f"{call_date} {call_time}",
-                "%Y-%m-%d %H:%M"
-            )
+            start_jst = datetime.strptime(f"{call_date} {call_time}", "%Y-%m-%d %H:%M")
             start_utc = start_jst - timedelta(hours=9)
 
+            # Zoomミーティング名を固定
             meeting = create_zoom_meeting(
-                topic=f"{name} 商談",
+                topic="【オンライン取材】店舗の魅力をお聞かせください",
                 start_datetime_utc=start_utc
             )
 
@@ -1150,8 +1153,10 @@ def corporateform_submit():
                 f"ミーティングID：{meeting['id']}"
             )
 
-            # Salesforce 更新
+            # Salesforce 更新（Date/Timeフィールドも確実に反映）
             sf.Account.update(account_id, {
+                "Field24__c": call_date,
+                "Field25__c": call_time,
                 "Field351__c": zoom_invite
             })
 
@@ -1160,6 +1165,5 @@ def corporateform_submit():
     except Exception as e:
         message = f"エラーが発生しました: {str(e)}"
 
-    # 完了画面にメッセージを渡して表示
-    return render_template('result.html', message=message)
-
+    # 完了画面にメッセージとZoom URLを渡す
+    return render_template('result.html', message=message, zoom_url=meeting['join_url'] if zoom_invite else None)
