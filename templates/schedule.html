@@ -100,7 +100,7 @@ function generateSummaryEvents() {
             const count = summaryMap[date][time];
             const [hour, minute] = time.split(":");
             let endHour = parseInt(hour);
-            let endMinute = parseInt(minute) + 30;
+            let endMinute = parseInt(minute) + 60;
             if (endMinute === 60) { endHour += 1; endMinute = 0; }
 
             const start = `${date}T${hour}:${minute}:00`;
