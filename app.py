@@ -8,9 +8,11 @@ import os
 from flask_wtf import CSRFProtect
 import pytz
 import re
-from flask import jsonify, render_template
 import json
 import pandas as pd
+import base64
+
+
 
 
 
@@ -215,18 +217,25 @@ def get_zoom_access_token():
     Zoom Server-to-Server OAuthでアクセストークン取得
     """
     url = "https://zoom.us/oauth/token"
+
     headers = {
-        "Authorization": f"Basic {requests.auth._basic_auth_str(ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET)}"
+        "Authorization": requests.auth._basic_auth_str(
+            os.getenv("ZOOM_CLIENT_ID"),
+            os.getenv("ZOOM_CLIENT_SECRET")
+        ),
+        "Content-Type": "application/x-www-form-urlencoded"
     }
+
     params = {
         "grant_type": "account_credentials",
-        "account_id": ZOOM_ACCOUNT_ID
+        "account_id": os.getenv("ZOOM_ACCOUNT_ID")
     }
 
     resp = requests.post(url, headers=headers, params=params)
     resp.raise_for_status()
-    data = resp.json()
-    return data["access_token"]
+
+    return resp.json()["access_token"]
+
 
 
 
@@ -235,7 +244,8 @@ def create_zoom_meeting(topic, start_datetime_utc, duration_minutes=60):
     Zoom ミーティング作成
     """
     token = get_zoom_access_token()
-    url = f"https://api.zoom.us/v2/users/me/meetings"
+
+    url = "https://api.zoom.us/v2/users/me/meetings"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -243,7 +253,7 @@ def create_zoom_meeting(topic, start_datetime_utc, duration_minutes=60):
 
     payload = {
         "topic": topic,
-        "type": 2,  # スケジュールミーティング
+        "type": 2,
         "start_time": start_datetime_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "duration": duration_minutes,
         "timezone": "UTC",
@@ -255,9 +265,11 @@ def create_zoom_meeting(topic, start_datetime_utc, duration_minutes=60):
         }
     }
 
-    resp = requests.post(url, headers=headers, data=json.dumps(payload))
+    resp = requests.post(url, headers=headers, json=payload)
     resp.raise_for_status()
+
     return resp.json()
+
 
 
 
@@ -1091,7 +1103,6 @@ def corporateform():
 def corporateform_submit():
     login_id = session.get('username')
 
-    # フォーム値
     name = request.form.get('Name')
     phone = request.form.get('X1__c')
     owner_name = request.form.get('Field327__c')
@@ -1099,7 +1110,6 @@ def corporateform_submit():
     call_date = request.form.get('Field24__c')   # yyyy-mm-dd
     call_time = request.form.get('Field25__c')   # HH:MM
 
-    # Salesforce送信用
     account_data = {
         "Name": name,
         "X1__c": phone,
@@ -1114,48 +1124,41 @@ def corporateform_submit():
         "Field78__c": "新設",
     }
 
-    # ---------- Salesforce作成 ----------
-    result = sf.Account.create(account_data)
-    account_id = result["id"]
+    try:
+        # Salesforce 作成
+        result = sf.Account.create(account_data)
+        account_id = result["id"]
 
-    zoom_invite = None
+        # Zoom 作成
+        if call_date and call_time:
+            start_jst = datetime.strptime(
+                f"{call_date} {call_time}",
+                "%Y-%m-%d %H:%M"
+            )
+            start_utc = start_jst - timedelta(hours=9)
 
-    # ---------- Zoom作成 ----------
-    if call_date and call_time:
-        start_jst = datetime.strptime(
-            f"{call_date} {call_time}",
-            "%Y-%m-%d %H:%M"
-        )
-        start_utc = start_jst - timedelta(hours=9)
+            meeting = create_zoom_meeting(
+                topic=f"{name} 商談",
+                start_datetime_utc=start_utc
+            )
 
-        meeting = create_zoom_meeting(
-            topic=f"{name} 商談",
-            start_utc=start_utc
-        )
+            zoom_invite = (
+                f"【Zoom商談】\n"
+                f"日時：{start_jst.strftime('%Y/%m/%d %H:%M')}\n"
+                f"参加URL：{meeting['join_url']}\n"
+                f"ミーティングID：{meeting['id']}"
+            )
 
-        zoom_invite = (
-            f"【Zoom商談】\n"
-            f"日時：{start_jst.strftime('%Y/%m/%d %H:%M')}\n"
-            f"参加URL：{meeting['join_url']}\n"
-            f"ミーティングID：{meeting['id']}"
-        )
+            sf.Account.update(account_id, {
+                "Field351__c": zoom_invite
+            })
 
-        # ---------- Zoom招待状を保存 ----------
-        sf.Account.update(account_id, {
-            "Field351__c": zoom_invite
-        })
+        flash("Salesforce作成＆Zoomミーティング発行が完了しました", "success")
 
-    flash("レコード作成＆Zoomミーティング作成が完了しました", "success")
+    except Exception as e:
+        flash(f"エラーが発生しました: {str(e)}", "danger")
+
     return redirect(url_for('corporateform'))
 
 
-
-@app.route("/zoom_create", methods=["POST"])
-@login_required
-def zoom_create():
-    topic = request.form.get("topic")
-    start = datetime.strptime(request.form.get("start"), "%Y-%m-%dT%H:%M")
-    start_utc = start - timedelta(hours=9)  # JST→UTC
-    meeting = create_zoom_meeting(topic, start_utc)
-    return jsonify(meeting)
 
