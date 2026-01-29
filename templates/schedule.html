@@ -2,31 +2,56 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>商談カレンダー（週）</title>
+<title>商談スケジュール（週・日）</title>
 
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
 body {
+    margin: 0;
+    padding: 20px;
+    font-family: "Segoe UI", "Noto Sans JP", sans-serif;
     background: #f5f7fa;
-    font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
 }
 
-/* 土日背景 */
-.fc-day-sun { background: rgba(244, 67, 54, 0.06); }
-.fc-day-sat { background: rgba(33, 150, 243, 0.06); }
+/* カレンダー全体 */
+#calendar {
+    max-width: 1200px;
+    margin: auto;
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.08);
+}
 
-/* 週ビュー：時間枠の高さ */
-.fc-timegrid-slot { height: 48px !important; }
+/* 時間軸 */
+.fc-timegrid-slot-label {
+    font-size: 12px;
+    color: #555;
+}
 
-/* 件数イベントスタイル */
+/* 件数イベント（重なり対策済） */
 .summary-event {
-    font-size: 14px;
-    font-weight: bold;
+    font-size: 13px;
+    font-weight: 600;
     text-align: center;
-    line-height: 1.3;
+    line-height: 1.2;
     border-radius: 6px;
+    padding: 4px 2px;
+    opacity: 0.82;           /* ← 下を透かす */
+    pointer-events: none;   /* ← 操作邪魔しない */
+}
+
+/* 文字は必ず黒 */
+.summary-event .fc-event-title {
+    color: #111;
+}
+
+/* 通常イベント（商談） */
+.fc-event {
+    border-radius: 6px;
+    font-size: 12px;
 }
 </style>
 </head>
@@ -35,137 +60,82 @@ body {
 <div id="calendar"></div>
 
 <script>
-// ==========================
-// サーバーから取得したイベント
-// ==========================
-const RAW_EVENTS = {{ events | tojson | safe }};
+document.addEventListener('DOMContentLoaded', function () {
 
-// 件数に応じたグラデーション色
-function getColorByCount(count) {
-    const maxCount = 10;
-    const ratio = Math.min(count / maxCount, 1);
+    const calendarEl = document.getElementById('calendar');
 
-    let r, g, b;
+    /* ===== テスト用 商談データ ===== */
+    const rawEvents = [
+        { start: '2026-01-29T09:00', end: '2026-01-29T10:00' },
+        { start: '2026-01-29T09:00', end: '2026-01-29T10:00' },
+        { start: '2026-01-29T10:00', end: '2026-01-29T11:00' },
+        { start: '2026-01-29T10:00', end: '2026-01-29T11:00' },
+        { start: '2026-01-29T10:00', end: '2026-01-29T11:00' },
+        { start: '2026-01-29T11:00', end: '2026-01-29T12:00' },
+        { start: '2026-01-29T11:00', end: '2026-01-29T12:00' },
+        { start: '2026-01-29T11:00', end: '2026-01-29T12:00' },
+        { start: '2026-01-29T11:00', end: '2026-01-29T12:00' },
+        { start: '2026-01-29T11:00', end: '2026-01-29T12:00' },
+    ];
 
-    if (ratio < 0.3) {
-        r = Math.round(144 + (173-144)*(ratio/0.3));
-        g = Math.round(202 + (255-202)*(ratio/0.3));
-        b = Math.round(249 + (47-249)*(ratio/0.3));
-    } else if (ratio < 0.7) {
-        const rRatio = (ratio-0.3)/0.4;
-        r = Math.round(173 + (255-173)*rRatio);
-        g = Math.round(255 - (255-152)*rRatio);
-        b = Math.round(47 - (47-0)*rRatio);
-    } else {
-        const rRatio = (ratio-0.7)/0.3;
-        r = 255;
-        g = Math.round(152 - (152*rRatio));
-        b = 0;
+    /* ===== 件数 → 色（業務UI鉄板） ===== */
+    function getColorByCount(count) {
+        const colors = [
+            '#E3F2FD', // 1
+            '#BBDEFB', // 2
+            '#90CAF9', // 3
+            '#64B5F6', // 4
+            '#FFF59D', // 5
+            '#FFE082', // 6
+            '#FFCC80', // 7
+            '#FFAB91', // 8
+            '#EF9A9A', // 9
+            '#E53935', // 10
+        ];
+        return colors[Math.min(count, 10) - 1];
     }
 
-    return `rgb(${r},${g},${b})`;
-}
-
-// 背景色に応じて文字色を白/黒に自動調整
-function getTextColor(bgColor) {
-    const rgb = bgColor.match(/\d+/g).map(Number);
-    const brightness = (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
-    return brightness > 140 ? '#000' : '#fff';
-}
-
-// ==========================
-// 30分単位で件数集計イベント生成 (+9時間補正)
-// ==========================
-function generateSummaryEvents() {
-    const summaryMap = {};
-
-    RAW_EVENTS.forEach(ev => {
-        // ev.start は ISO 文字列
-        let dt = new Date(ev.start);
-        dt.setHours(dt.getHours() + 9); // 強制 +9時間
-
-        const dateStr = dt.toISOString().split("T")[0];
-        const hour = dt.getHours();
-        const minute = dt.getMinutes() < 30 ? 0 : 30;
-        const timeKey = `${String(hour).padStart(2,'0')}:${minute===0?'00':'30'}`;
-
-        if (!summaryMap[dateStr]) summaryMap[dateStr] = {};
-        if (!summaryMap[dateStr][timeKey]) summaryMap[dateStr][timeKey] = 0;
-        summaryMap[dateStr][timeKey]++;
+    /* ===== 時間帯ごとに集計 ===== */
+    const grouped = {};
+    rawEvents.forEach(e => {
+        const key = `${e.start}_${e.end}`;
+        grouped[key] = grouped[key] || { start: e.start, end: e.end, count: 0 };
+        grouped[key].count++;
     });
 
-    const summaryEvents = [];
-    for (const date in summaryMap) {
-        for (const time in summaryMap[date]) {
-            const count = summaryMap[date][time];
-            const [hour, minute] = time.split(":");
-            let endHour = parseInt(hour);
-            let endMinute = parseInt(minute) + 60;
-            if (endMinute === 60) { endHour += 1; endMinute = 0; }
+    const summaryEvents = Object.values(grouped).map(g => ({
+        title: `${g.count}件`,
+        start: g.start,
+        end: g.end,
+        display: 'block',
+        backgroundColor: getColorByCount(g.count),
+        borderColor: '#555',
+        textColor: '#111',
+        classNames: ['summary-event'],
+        zIndex: 100 + g.count   // ← 多いほど前
+    }));
 
-            const start = `${date}T${hour}:${minute}:00`;
-            const end = `${date}T${String(endHour).padStart(2,'0')}:${String(endMinute).padStart(2,'0')}:00`;
+    /* ===== カレンダー生成 ===== */
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        locale: 'ja',
+        height: 'auto',
 
-            const bgColor = getColorByCount(count);
-            summaryEvents.push({
-                title: `${count}件`,
-                start: start,
-                end: end,
-                display: 'block',
-                backgroundColor: bgColor,
-                borderColor: bgColor,
-                textColor: getTextColor(bgColor),
-                classNames: ['summary-event'],
-            });
-        }
-    }
+        slotMinTime: '09:00:00',
+        slotMaxTime: '20:00:00',
+        slotDuration: '01:00:00',
 
-    return summaryEvents;
-}
-
-// ==========================
-// カレンダー初期化
-// ==========================
-const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
-    locale: "ja",
-    initialView: "timeGridWeek",
-    height: "auto",
-
-    customButtons: {
-        corporateform: {
-            text: "商談登録",
-            click: function () {
-                window.location.href = "https://giftsf.onrender.com/corporateform";
-            }
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'timeGridWeek,timeGridDay'
         },
-        backmenu: {
-            text: "メニューに戻る",
-            click: function () {
-                window.location.href = "https://giftsf.onrender.com/menu_page";
-            }
-        }
-    },
 
-    headerToolbar: {
-        left: "prev,next today",
-        center: "title",
-        right: "backmenu,corporateform"
-    },
+        events: summaryEvents
+    });
 
-    buttonText: {
-        today: "今日",
-        week: "週"
-    },
-
-    nowIndicator: true,
-    allDaySlot: false,
-    slotMinTime: "08:00:00",
-    slotMaxTime: "20:00:00",
-
-    events: generateSummaryEvents()
+    calendar.render();
 });
-
-calendar.render();
 </script>
 </body>
 </html>
