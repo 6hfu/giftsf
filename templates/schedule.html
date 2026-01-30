@@ -9,39 +9,56 @@
 
 <style>
 body {
-    margin: 0;
     background: #f5f7fa;
     font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
+    margin: 0;
 }
 
 /* 土日背景 */
 .fc-day-sun { background: rgba(244, 67, 54, 0.06); }
 .fc-day-sat { background: rgba(33, 150, 243, 0.06); }
 
-/* 時間枠の高さ（1画面最適化） */
+/* 1画面に収めるため時間枠を圧縮 */
 .fc-timegrid-slot {
-    height: 38px !important;
+    height: 34px !important;
 }
 
 /* 件数イベント */
 .summary-event {
-    font-size: 17px;          /* 文字を大きく */
+    font-size: 18px;
     font-weight: 700;
     text-align: center;
     line-height: 1.2;
     border-radius: 8px;
-    padding: 2px 0;
 }
 
-/* ヘッダーを少しスリムに */
-.fc-toolbar-title {
-    font-size: 20px;
+/* リロード促しバー */
+#reloadNotice {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1976D2;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    cursor: pointer;
+    display: none;
+    z-index: 9999;
+}
+#reloadNotice:hover {
+    background: #0D47A1;
 }
 </style>
 </head>
 
 <body>
+
 <div id="calendar"></div>
+<div id="reloadNotice">⟳ しばらく更新されていません。クリックして再読み込み</div>
 
 <script>
 // ==========================
@@ -50,22 +67,22 @@ body {
 const RAW_EVENTS = {{ events | tojson | safe }};
 
 // ==========================
-// 件数 → 色（濃い青スタート）
+// 件数ごとの色（濃い青 → 赤）
 // ==========================
 function getColorByCount(count) {
     const colors = [
-        '#1976D2', // 1件: 濃い青
+        '#1976D2', // 1件：濃い青
         '#1565C0', // 2件
         '#0D47A1', // 3件
-        '#FBC02D', // 4件: 黄色
-        '#FB8C00', // 5件: オレンジ
-        '#F4511E', // 6件: 橙赤
-        '#D32F2F', // 7件以上: 赤
+        '#FBC02D', // 4件：黄色
+        '#FB8C00', // 5件：オレンジ
+        '#F4511E', // 6件：橙赤
+        '#D32F2F', // 7件以上：危険な赤
     ];
     return colors[Math.min(count - 1, colors.length - 1)];
 }
 
-// 文字色自動判定
+// 文字色自動調整
 function getTextColor(bgColor) {
     const rgb = bgColor.match(/\d+/g).map(Number);
     const brightness = (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
@@ -88,8 +105,7 @@ function generateSummaryEvents() {
         const timeKey = `${String(hour).padStart(2,'0')}:${minute===0?'00':'30'}`;
 
         summaryMap[dateStr] ??= {};
-        summaryMap[dateStr][timeKey] ??= 0;
-        summaryMap[dateStr][timeKey]++;
+        summaryMap[dateStr][timeKey] = (summaryMap[dateStr][timeKey] || 0) + 1;
     });
 
     const events = [];
@@ -98,15 +114,16 @@ function generateSummaryEvents() {
             const count = summaryMap[date][time];
             const [h, m] = time.split(":").map(Number);
 
-            let endH = h + 1;
-            let endM = m;
+            let endH = h;
+            let endM = m + 60;
+            if (endM === 60) { endH++; endM = 0; }
 
             const bg = getColorByCount(count);
-
             events.push({
                 title: `${count}件`,
                 start: `${date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`,
                 end: `${date}T${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}:00`,
+                display: 'block',
                 backgroundColor: bg,
                 borderColor: bg,
                 textColor: getTextColor(bg),
@@ -118,21 +135,35 @@ function generateSummaryEvents() {
 }
 
 // ==========================
+// リロード管理
+// ==========================
+const RELOAD_LIMIT_MINUTES = 10;
+const now = Date.now();
+const lastReload = localStorage.getItem("lastReloadTime");
+
+if (lastReload) {
+    const diff = (now - Number(lastReload)) / 1000 / 60;
+    if (diff >= RELOAD_LIMIT_MINUTES) {
+        document.getElementById("reloadNotice").style.display = "block";
+    }
+}
+
+document.getElementById("reloadNotice").onclick = () => location.reload();
+localStorage.setItem("lastReloadTime", now);
+
+// ==========================
 // カレンダー初期化
 // ==========================
 const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
     locale: "ja",
     initialView: "timeGridWeek",
-
-    /* ★ 1画面フィットの核心 */
-    height: "calc(100vh - 20px)",
-
-    nowIndicator: true,
-    allDaySlot: false,
-    slotMinTime: "09:00:00",
-    slotMaxTime: "20:00:00",
+    height: "100vh",
 
     customButtons: {
+        reload: {
+            text: "再読込",
+            click: () => location.reload()
+        },
         corporateform: {
             text: "商談登録",
             click: () => location.href = "https://giftsf.onrender.com/corporateform"
@@ -144,14 +175,15 @@ const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), 
     },
 
     headerToolbar: {
-        left: "prev,next today",
+        left: "prev,next today reload",
         center: "title",
         right: "backmenu corporateform"
     },
 
-    buttonText: {
-        today: "今日"
-    },
+    nowIndicator: true,
+    allDaySlot: false,
+    slotMinTime: "09:00:00",
+    slotMaxTime: "20:00:00",
 
     events: generateSummaryEvents()
 });
