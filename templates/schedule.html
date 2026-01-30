@@ -42,18 +42,16 @@ body {
 const RAW_EVENTS = {{ events | tojson | safe }};
 
 function getColorByCount(count) {
-    // 件数ごとに色を配列で指定
     const colors = [
-        '#E3F2FD', // 1件: 淡い青
-        '#90CAF9', // 2件: 少し濃い青
-        '#64B5F6', // 3件: 濃い青
-        '#FFF59D', // 4件: 黄色
-        '#FFE082', // 5件: オレンジ
-        '#FF8A65', // 6件: 橙赤
-        '#F44336', // 7件以上: 赤
+        '#B3E5FC', // 1件: はっきりした淡い水色
+        '#4FC3F7', // 2件: 明確な青
+        '#0288D1', // 3件: 濃い青
+        '#FFF176', // 4件: 視認性の高い黄色
+        '#FFB74D', // 5件: はっきりオレンジ
+        '#FF7043', // 6件: 警告感のある橙赤
+        '#E53935', // 7件以上: 強い赤（危険）
     ];
 
-    // 配列の範囲外は最後の色
     return colors[Math.min(count - 1, colors.length - 1)];
 }
 
