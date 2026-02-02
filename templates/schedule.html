@@ -28,8 +28,8 @@
             border-radius: 8px;
         
             /* 高さを指定（例: 2時間分 = 34px × 2 × 60分 ÷ 1分の高さ?） */
-            height: calc(34px * 2 * 60 / 60); /* 2時間分 */
-            min-height: calc(34px * 2); /* 安全策としてmin-heightも */
+            height: calc(68px * 2 * 60 / 60); /* 2時間分 */
+            min-height: calc(68px * 2); /* 安全策としてmin-heightも */
         }
 
 
@@ -123,7 +123,7 @@
                 // 1分枠
                 let endH = h;
                 let endM = m + 1;
-                if (endM === 120) {
+                if (endM === 7200) {
                     endH++;
                     endM = 0;
                 }
