@@ -120,12 +120,12 @@
                 const count = summaryMap[date][time];
                 const [h, m] = time.split(":").map(Number);
     
-                // 1分枠
-                let endH = h;
-                let endM = m + 1;
-                if (endM === 7200) {
-                    endH++;
-                    endM = 0;
+                // 2時間分の表示に変更
+                let endH = h + 2;
+                let endM = m;
+                if (endH >= 24) {
+                    endH = 23;
+                    endM = 59;
                 }
     
                 const bg = getColorByCount(count);
