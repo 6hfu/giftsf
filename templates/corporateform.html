@@ -134,6 +134,7 @@
                 max="20:59"
                 required
             >
+            <small class="form-text text-muted">※1分単位で入力可能</small>
         </div>
 
         <!-- 獲得者（ログインID） -->
@@ -158,13 +159,13 @@ $(document).ready(function () {
     $('#appointmentForm').on('submit', function (e) {
         let isValid = true;
 
-        requiredFields.forEach(id => {
-            $('#' + id).removeClass('is-invalid');
-        });
+        // 赤枠リセット
+        requiredFields.forEach(id => $('#' + id).removeClass('is-invalid'));
 
+        // 必須チェック
         requiredFields.forEach(id => {
             const val = $('#' + id).val();
-            if (!val) {
+            if (!val || val.trim() === "") {
                 $('#' + id).addClass('is-invalid');
                 isValid = false;
             }
@@ -174,6 +175,13 @@ $(document).ready(function () {
             alert('必須項目が未入力です。赤枠の項目を確認してください。');
             e.preventDefault();
             return false;
+        }
+
+        // 送信前に time フィールドを安全に HH:MM に補正
+        const timeField = $('#Field25__c');
+        let timeVal = timeField.val();
+        if (timeVal && /^\d{1,2}:\d{2}$/.test(timeVal)) {
+            timeField.val(timeVal.padStart(5, '0'));
         }
 
         // 二重送信防止
