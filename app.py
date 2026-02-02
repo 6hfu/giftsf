@@ -1072,16 +1072,15 @@ def update_record():
 
 @app.route("/schedule")
 def schedule():
-    records = get_schedule_records()
-    events = []
-    for r in records:
-        rounded = round_time_30min(r["next_call"])
-        events.append({
-            "start": rounded.strftime("%Y-%m-%dT%H:%M:%S"),
-            "status": r["status"],
-            "record_id": r["id"]
-        })
-    return render_template("schedule.html", events=events)
+    try:
+        events = get_schedule_records()
+        print("EVENTS:", events)  # ← ここ重要
+        return render_template("schedule.html", events=events)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return str(e), 500
+
 
 
 
