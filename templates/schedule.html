@@ -1,186 +1,206 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>商談カレンダー（週・日ビュー対応）</title>
-
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-
-<style>
-body {
-    background: #f5f7fa;
-    font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
-    margin: 0;
-}
-
-/* 土日背景 */
-.fc-day-sun { background: rgba(244, 67, 54, 0.06); }
-.fc-day-sat { background: rgba(33, 150, 243, 0.06); }
-
-/* 時間枠を1分単位で自然な高さに */
-.fc-timegrid-slot {
-    height: 25px !important; /* 微調整可能 */
-}
-
-/* 件数イベント */
-.summary-event {
-    font-size: 16px;
-    font-weight: 700;
-    text-align: center;
-    line-height: 1.2;
-    border-radius: 8px;
-}
-
-/* リロード促しバー */
-#reloadNotice {
-    position: fixed;
-    bottom: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1976D2;
-    color: #fff;
-    padding: 12px 20px;
-    border-radius: 999px;
-    font-size: 14px;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-    cursor: pointer;
-    display: none;
-    z-index: 9999;
-}
-#reloadNotice:hover {
-    background: #0D47A1;
-}
-</style>
-</head>
-
-<body>
-
-<div id="calendar"></div>
-<div id="reloadNotice">⟳ しばらく更新されていません。クリックして再読み込み</div>
-
-<script>
-// ==========================
-// サーバーから取得したイベント（例：Flaskなどから渡す）
-// ==========================
-const RAW_EVENTS = {{ events | tojson | safe }}; 
-
-// ==========================
-// 件数ごとの色（濃い青 → 赤）
-// ==========================
-function getColorByCount(count) {
-    const colors = [
-        '#1976D2', // 1件
-        '#1565C0', // 2件
-        '#0D47A1', // 3件
-        '#FBC02D', // 4件
-        '#FB8C00', // 5件
-        '#F4511E', // 6件
-        '#D32F2F', // 7件以上
-    ];
-    return colors[Math.min(count - 1, colors.length - 1)];
-}
-
-// ==========================
-// 文字色自動判定
-// ==========================
-function getTextColor(bgColor) {
-    const rgb = bgColor.match(/\d+/g).map(Number);
-    const brightness = (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
-    return brightness > 150 ? '#000' : '#fff';
-}
-
-// ==========================
-// 1件 = 2時間固定でイベント生成（+9時間補正）
-// ==========================
-function generateSummaryEvents() {
-    const events = [];
-
-    RAW_EVENTS.forEach(ev => {
-        if (!ev.start) return;
-
-        const start = new Date(ev.start);
-        start.setHours(start.getHours() + 9); // UTC → JST
-
-        const end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // 2時間後
-
-        const count = 1; // 1件ずつ
-        const bg = getColorByCount(count);
-
-        events.push({
-            title: `予定`,
-            start: start.toISOString().slice(0,19),
-            end: end.toISOString().slice(0,19),
-            display: 'block',
-            backgroundColor: bg,
-            borderColor: bg,
-            textColor: getTextColor(bg),
-            classNames: ['summary-event']
-        });
-    });
-
-    return events;
-}
-
-
-// ==========================
-// リロード管理
-// ==========================
-const RELOAD_LIMIT_MINUTES = 10;
-const now = Date.now();
-const lastReload = localStorage.getItem("lastReloadTime");
-
-if (lastReload) {
-    const diff = (now - Number(lastReload)) / 1000 / 60;
-    if (diff >= RELOAD_LIMIT_MINUTES) {
-        document.getElementById("reloadNotice").style.display = "block";
-    }
-}
-
-document.getElementById("reloadNotice").onclick = () => location.reload();
-localStorage.setItem("lastReloadTime", now);
-
-// ==========================
-// カレンダー初期化
-// ==========================
-const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
-    locale: "ja",
-    initialView: "timeGridWeek",
-    height: "100vh",
-
-    customButtons: {
-        reload: {
-            text: "再読込",
-            click: () => location.reload()
-        },
-        corporateform: {
-            text: "商談登録",
-            click: () => location.href = "https://giftsf.onrender.com/corporateform"
-        },
-        backmenu: {
-            text: "メニューに戻る",
-            click: () => location.href = "https://giftsf.onrender.com/menu_page"
+    <meta charset="UTF-8">
+    <title>商談カレンダー（週）</title>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <style>
+        body {
+            background: #f5f7fa;
+            font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
+            margin: 0;
         }
-    },
 
-    headerToolbar: {
-        left: "prev,next today reload",
-        center: "title",
-        right: "backmenu corporateform"
-    },
+        /* 土日背景 */
+        .fc-day-sun { background: rgba(244, 67, 54, 0.06); }
+        .fc-day-sat { background: rgba(33, 150, 243, 0.06); }
 
-    nowIndicator: true,
-    allDaySlot: false,
-    slotMinTime: "09:00:00",
-    slotMaxTime: "20:00:00",
-    slotDuration: "00:01:00", // 1分単位表示
-    slotLabelInterval: "00:30", // 時間ラベルは30分単位で表示
-    events: generateSummaryEvents()
-});
+        /* 1画面に収めるため時間枠を圧縮 */
+        .fc-timegrid-slot { height: 34px !important; }
 
-calendar.render();
-</script>
+        /* 件数イベント */
+        .summary-event {
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.2;
+            border-radius: 8px;
+        }
+
+        /* リロード促しバー */
+        #reloadNotice {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1976D2;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            cursor: pointer;
+            display: none;
+            z-index: 9999;
+        }
+        #reloadNotice:hover { background: #0D47A1; }
+    </style>
+</head>
+<body>
+    <div id="calendar"></div>
+    <div id="reloadNotice">⟳ しばらく更新されていません。クリックして再読み込み</div>
+
+    <script>
+    // ==========================
+    // サーバーから取得したイベント
+    // ==========================
+    const RAW_EVENTS = {{ events | tojson | safe }};
+    
+    // ==========================
+    // 件数ごとの色（濃い青 → 赤）
+    // ==========================
+    function getColorByCount(count) {
+        const colors = [
+            '#1976D2', // 1件
+            '#1565C0', // 2件
+            '#0D47A1', // 3件
+            '#FBC02D', // 4件
+            '#FB8C00', // 5件
+            '#F4511E', // 6件
+            '#D32F2F', // 7件以上
+        ];
+        return colors[Math.min(count - 1, colors.length - 1)];
+    }
+    
+    // ==========================
+    // 文字色自動判定
+    // ==========================
+    function getTextColor(bgColor) {
+        const rgb = bgColor.match(/\d+/g).map(Number);
+        const brightness = (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
+        return brightness > 150 ? '#000' : '#fff';
+    }
+    
+    // ==========================
+    // 1分単位で件数集計（+9時間補正）
+    // ==========================
+    function generateSummaryEvents() {
+        const summaryMap = {};
+    
+        RAW_EVENTS.forEach(ev => {
+            if (!ev.start) return;
+    
+            // UTC → JST
+            const dt = new Date(ev.start);
+            dt.setHours(dt.getHours() + 9);
+    
+            const dateStr = dt.toISOString().split("T")[0];
+            const hour = dt.getHours();
+            const minute = dt.getMinutes();
+    
+            const timeKey =
+                `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+    
+            summaryMap[dateStr] ??= {};
+            summaryMap[dateStr][timeKey] =
+                (summaryMap[dateStr][timeKey] || 0) + 1;
+        });
+    
+        const events = [];
+    
+        for (const date in summaryMap) {
+            for (const time in summaryMap[date]) {
+                const count = summaryMap[date][time];
+                const [h, m] = time.split(":").map(Number);
+    
+                // 1分枠
+                let endH = h;
+                let endM = m + 1;
+                if (endM === 60) {
+                    endH++;
+                    endM = 0;
+                }
+    
+                const bg = getColorByCount(count);
+    
+                events.push({
+                    title: `${count}件`,
+                    start: `${date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`,
+                    end: `${date}T${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}:00`,
+                    display: 'block',
+                    backgroundColor: bg,
+                    borderColor: bg,
+                    textColor: getTextColor(bg),
+                    classNames: ['summary-event']
+                });
+            }
+        }
+        return events;
+    }
+    
+    // ==========================
+    // リロード管理
+    // ==========================
+    const RELOAD_LIMIT_MINUTES = 10;
+    const now = Date.now();
+    const lastReload = localStorage.getItem("lastReloadTime");
+    
+    if (lastReload) {
+        const diff = (now - Number(lastReload)) / 1000 / 60;
+        if (diff >= RELOAD_LIMIT_MINUTES) {
+            document.getElementById("reloadNotice").style.display = "block";
+        }
+    }
+    
+    document.getElementById("reloadNotice").onclick = () => location.reload();
+    localStorage.setItem("lastReloadTime", now);
+    
+    // ==========================
+    // カレンダー初期化
+    // ==========================
+    const calendar = new FullCalendar.Calendar(
+        document.getElementById("calendar"),
+        {
+            locale: "ja",
+            initialView: "timeGridWeek",
+            height: "100vh",
+    
+            customButtons: {
+                reload: {
+                    text: "再読込",
+                    click: () => location.reload()
+                },
+                corporateform: {
+                    text: "商談登録",
+                    click: () =>
+                        location.href = "https://giftsf.onrender.com/corporateform"
+                },
+                backmenu: {
+                    text: "メニューに戻る",
+                    click: () =>
+                        location.href = "https://giftsf.onrender.com/menu_page"
+                }
+            },
+    
+            headerToolbar: {
+                left: "prev,next today reload",
+                center: "title",
+                right: "backmenu corporateform"
+            },
+    
+            nowIndicator: true,
+            allDaySlot: false,
+            slotMinTime: "09:00:00",
+            slotMaxTime: "20:00:00",
+    
+            events: generateSummaryEvents()
+        }
+    );
+    
+    calendar.render();
+    </script>
 
 </body>
 </html>
