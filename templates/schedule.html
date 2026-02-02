@@ -19,14 +19,19 @@
         /* 1画面に収めるため時間枠を圧縮 */
         .fc-timegrid-slot { height: 34px !important; }
 
-        /* 件数イベント */
+        /* 件数イベントだけ高さを2時間分にする */
         .summary-event {
             font-size: 18px;
             font-weight: 700;
             text-align: center;
             line-height: 1.2;
             border-radius: 8px;
+        
+            /* 高さを指定（例: 2時間分 = 34px × 2 × 60分 ÷ 1分の高さ?） */
+            height: calc(34px * 2 * 60 / 60); /* 2時間分 */
+            min-height: calc(34px * 2); /* 安全策としてmin-heightも */
         }
+
 
         /* リロード促しバー */
         #reloadNotice {
