@@ -41,16 +41,14 @@
         color: #495057;
     }
 
-    .form-control,
-    .form-select {
+    .form-control {
         border-radius: 0.6rem;
         padding: 0.75rem;
         border: 1px solid #ced4da;
         transition: all 0.2s ease;
     }
 
-    .form-control:focus,
-    .form-select:focus {
+    .form-control:focus {
         border-color: #86b7fe;
         box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25);
     }
@@ -68,20 +66,9 @@
         color: red;
     }
 
-    /* エラー表示 */
     .is-invalid {
         border-color: #dc3545 !important;
         box-shadow: 0 0 0 0.2rem rgba(220,53,69,.25) !important;
-    }
-
-    /* 横並び用 */
-    .time-selects {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .time-selects .form-select {
-        flex: 1;
     }
 </style>
 </head>
@@ -95,10 +82,14 @@
 
 <div class="form-container">
     <h2>商談登録フォーム</h2>
+
     <form id="appointmentForm" method="POST" action="{{ url_for('corporateform_submit') }}">
+
         <!-- 店舗名 -->
         <div class="mb-3">
-            <label for="Name" class="form-label">店舗名 <span class="text-danger-small">※必須</span></label>
+            <label for="Name" class="form-label">
+                店舗名 <span class="text-danger-small">※必須</span>
+            </label>
             <input type="text" class="form-control" id="Name" name="Name" required>
         </div>
 
@@ -122,24 +113,27 @@
 
         <!-- 商談希望日 -->
         <div class="mb-3">
-            <label for="Field24__c" class="form-label">商談希望日 <span class="text-danger-small">※必須</span></label>
+            <label for="Field24__c" class="form-label">
+                商談希望日 <span class="text-danger-small">※必須</span>
+            </label>
             <input type="date" class="form-control" id="Field24__c" name="Field24__c" required>
         </div>
 
-        <!-- 商談希望時間（時間・分別） -->
+        <!-- 商談希望時間（1分単位） -->
         <div class="mb-3">
-            <label class="form-label">商談希望時間 <span class="text-danger-small">※必須</span></label>
-            <div class="time-selects">
-                <select class="form-select" id="Field25_hour" required>
-                    <option value="" selected disabled>時間</option>
-                </select>
-                <select class="form-select" id="Field25_min" required>
-                    <option value="" selected disabled>分</option>
-                    <option value="00">00</option>
-                    <option value="30">30</option>
-                </select>
-            </div>
-            <input type="hidden" name="Field25__c" id="Field25__c">
+            <label for="Field25__c" class="form-label">
+                商談希望時間 <span class="text-danger-small">※必須</span>
+            </label>
+            <input
+                type="time"
+                class="form-control"
+                id="Field25__c"
+                name="Field25__c"
+                step="60"
+                min="09:00"
+                max="20:59"
+                required
+            >
         </div>
 
         <!-- 獲得者（ログインID） -->
@@ -153,33 +147,25 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
-$(document).ready(function() {
-    // 今日以降しか選べない
+$(document).ready(function () {
+
+    // 今日以降のみ選択可
     const today = new Date().toISOString().split('T')[0];
     $('#Field24__c').attr('min', today);
 
-    // 時間のプルダウン生成（9～20）
-    const hourSelect = $('#Field25_hour');
-    for (let h = 9; h <= 20; h++) {
-        hourSelect.append(`<option value="${h.toString().padStart(2,'0')}">${h.toString().padStart(2,'0')}</option>`);
-    }
+    const requiredFields = ['Name', 'Field24__c', 'Field25__c'];
 
-    const requiredFields = ['Name', 'Field24__c', 'Field25_hour', 'Field25_min'];
-
-    // フォーム送信時
-    $('#appointmentForm').on('submit', function(e) {
+    $('#appointmentForm').on('submit', function (e) {
         let isValid = true;
 
-        // エラー初期化
-        requiredFields.forEach(field => {
-            $('#' + field).removeClass('is-invalid');
+        requiredFields.forEach(id => {
+            $('#' + id).removeClass('is-invalid');
         });
 
-        // 必須チェック
-        requiredFields.forEach(field => {
-            const val = $('#' + field).val();
-            if (!val || val.trim() === '') {
-                $('#' + field).addClass('is-invalid');
+        requiredFields.forEach(id => {
+            const val = $('#' + id).val();
+            if (!val) {
+                $('#' + id).addClass('is-invalid');
                 isValid = false;
             }
         });
@@ -190,14 +176,10 @@ $(document).ready(function() {
             return false;
         }
 
-        // 時間と分を結合してhiddenにセット
-        const selectedHour = $('#Field25_hour').val();
-        const selectedMin = $('#Field25_min').val();
-        $('#Field25__c').val(`${selectedHour}:${selectedMin}`);
-
-        // 送信ボタン制御
+        // 二重送信防止
         const $btn = $(this).find('button[type="submit"]');
         $btn.prop('disabled', true).text('送信中...');
+
         setTimeout(() => {
             $btn.prop('disabled', false).text('送信');
         }, 10000);
