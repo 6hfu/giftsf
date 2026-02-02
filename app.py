@@ -182,17 +182,27 @@ def get_schedule_records():
     """
     result = sf.query_all(soql)
     records = []
+
     for r in result["records"]:
         status = r.get("Field334__c")
         next_call = r.get("Field97__c")
-        if next_call and status not in ["成約", "NG"]:
-            dt = datetime.fromisoformat(next_call.replace("Z", ""))
-            records.append({
-                "id": r["Id"],
-                "account": r["Name"],
-                "status": status,
-                "next_call": dt.strftime("%Y-%m-%dT%H:%M:%S")
-            })
+
+        if not next_call or status in ["成約", "NG"]:
+            continue
+
+        # Salesforce DateTime → UTC datetime に安全変換
+        # 例: 2026-02-01T08:30:00.000+0000
+        dt = datetime.strptime(
+            next_call[:19], "%Y-%m-%dT%H:%M:%S"
+        ).replace(tzinfo=timezone.utc)
+
+        records.append({
+            "id": r["Id"],
+            "account": r["Name"],
+            "status": status,
+            "next_call": dt   # ← strにしない！
+        })
+
     return records
 
 
@@ -201,6 +211,7 @@ def round_time_1min(dt):
         dt = datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S")
 
     return dt.replace(second=0, microsecond=0)
+
 
 
 
