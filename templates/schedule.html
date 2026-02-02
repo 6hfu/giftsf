@@ -95,51 +95,34 @@ function getTextColor(bgColor) {
 // 1件 = 2時間固定でイベント生成（+9時間補正）
 // ==========================
 function generateSummaryEvents() {
-    const summaryMap = {};
+    const events = [];
 
     RAW_EVENTS.forEach(ev => {
         if (!ev.start) return;
 
-        const dt = new Date(ev.start);
-        dt.setHours(dt.getHours() + 9); // UTC → JST
+        const start = new Date(ev.start);
+        start.setHours(start.getHours() + 9); // UTC → JST
 
-        const dateStr = dt.toISOString().split("T")[0];
-        const hour = dt.getHours();
-        const minute = dt.getMinutes();
+        const end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // 2時間後
 
-        const timeKey = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+        const count = 1; // 1件ずつ
+        const bg = getColorByCount(count);
 
-        summaryMap[dateStr] ??= {};
-        summaryMap[dateStr][timeKey] = (summaryMap[dateStr][timeKey] || 0) + 1;
+        events.push({
+            title: `予定`,
+            start: start.toISOString().slice(0,19),
+            end: end.toISOString().slice(0,19),
+            display: 'block',
+            backgroundColor: bg,
+            borderColor: bg,
+            textColor: getTextColor(bg),
+            classNames: ['summary-event']
+        });
     });
-
-    const events = [];
-
-    for (const date in summaryMap) {
-        for (const time in summaryMap[date]) {
-            const count = summaryMap[date][time];
-            const [h, m] = time.split(":").map(Number);
-
-            const start = new Date(`${date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`);
-            const end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // 2時間後
-
-            const bg = getColorByCount(count);
-
-            events.push({
-                title: `${count}件`,
-                start: start.toISOString().slice(0,19),
-                end: end.toISOString().slice(0,19),
-                display: 'block',
-                backgroundColor: bg,
-                borderColor: bg,
-                textColor: getTextColor(bg),
-                classNames: ['summary-event']
-            });
-        }
-    }
 
     return events;
 }
+
 
 // ==========================
 // リロード管理
