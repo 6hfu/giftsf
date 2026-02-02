@@ -196,18 +196,11 @@ def get_schedule_records():
     return records
 
 
-def round_time_30min(dt):
+def round_time_1min(dt):
     if isinstance(dt, str):
         dt = datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S")
-    minute = dt.minute
-    if minute < 15:
-        minute = 0
-    elif minute < 45:
-        minute = 30
-    else:
-        dt = dt.replace(hour=(dt.hour + 1) % 24)
-        minute = 0
-    return dt.replace(minute=minute, second=0, microsecond=0)
+
+    return dt.replace(second=0, microsecond=0)
 
 
 
