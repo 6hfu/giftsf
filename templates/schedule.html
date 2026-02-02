@@ -64,21 +64,19 @@
     const RAW_EVENTS = {{ events | tojson | safe }};
     
     // ==========================
-    // 件数ごとの色（濃い青 → 赤）
+    // 件数ごとの色
     // ==========================
     function getColorByCount(count) {
         const colors = [
-            '#1976D2', // 1件
-            '#1565C0', // 2件
-            '#0D47A1', // 3件
-            '#FBC02D', // 4件
-            '#FB8C00', // 5件
-            '#F4511E', // 6件
-            '#D32F2F', // 7件以上
+            '#64B5F6', // 1件：青（濃すぎない）
+            '#FFF176', // 2件：黄色
+            '#FFB300', // 3件：オレンジ
+            '#E53935', // 4件以上：赤
         ];
         return colors[Math.min(count - 1, colors.length - 1)];
     }
     
+        
     // ==========================
     // 文字色自動判定
     // ==========================
@@ -87,59 +85,63 @@
         const brightness = (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
         return brightness > 150 ? '#000' : '#fff';
     }
-
-        
+    
     // ==========================
-    // 2時間単位で件数集計（+9時間補正）
+    // 1分単位で件数集計（+9時間補正）
     // ==========================
     function generateSummaryEvents() {
-        const events = [];
+        const summaryMap = {};
     
-        // JSTに変換した Date 配列を作る
-        const jstDates = RAW_EVENTS
-            .filter(ev => ev.start)
-            .map(ev => {
-                const d = new Date(ev.start);
-                d.setHours(d.getHours() + 9);
-                return d;
-            })
-            .sort((a, b) => a - b);
+        RAW_EVENTS.forEach(ev => {
+            if (!ev.start) return;
     
-        jstDates.forEach(baseDt => {
-            const startDt = new Date(baseDt);
-            const endDt = new Date(baseDt);
-            endDt.setHours(endDt.getHours() + 2);
+            // UTC → JST
+            const dt = new Date(ev.start);
+            dt.setHours(dt.getHours() + 9);
     
-            // 2時間以内に含まれる件数をカウント
-            const count = jstDates.filter(d =>
-                d >= startDt && d < endDt
-            ).length;
+            const dateStr = dt.toISOString().split("T")[0];
+            const hour = dt.getHours();
+            const minute = dt.getMinutes();
     
-            if (count === 0) return;
+            const timeKey =
+                `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
     
-            const bg = getColorByCount(count);
-    
-            const dateStr = startDt.toISOString().split("T")[0];
-            const sh = String(startDt.getHours()).padStart(2, '0');
-            const sm = String(startDt.getMinutes()).padStart(2, '0');
-            const eh = String(endDt.getHours()).padStart(2, '0');
-            const em = String(endDt.getMinutes()).padStart(2, '0');
-    
-            events.push({
-                title: `${count}件`,
-                start: `${dateStr}T${sh}:${sm}:00`,
-                end: `${dateStr}T${eh}:${em}:00`,
-                display: 'block',
-                backgroundColor: bg,
-                borderColor: bg,
-                textColor: getTextColor(bg),
-                classNames: ['summary-event']
-            });
+            summaryMap[dateStr] ??= {};
+            summaryMap[dateStr][timeKey] =
+                (summaryMap[dateStr][timeKey] || 0) + 1;
         });
     
+        const events = [];
+    
+        for (const date in summaryMap) {
+            for (const time in summaryMap[date]) {
+                const count = summaryMap[date][time];
+                const [h, m] = time.split(":").map(Number);
+    
+                // 2時間分の表示に変更
+                let endH = h + 2;
+                let endM = m - 1;
+                if (endH >= 24) {
+                    endH = 23;
+                    endM = 59;
+                }
+    
+                const bg = getColorByCount(count);
+    
+                events.push({
+                    title: `${count}件`,
+                    start: `${date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`,
+                    end: `${date}T${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}:00`,
+                    display: 'block',
+                    backgroundColor: bg,
+                    borderColor: bg,
+                    textColor: getTextColor(bg),
+                    classNames: ['summary-event']
+                });
+            }
+        }
         return events;
     }
-
     
     // ==========================
     // リロード管理
