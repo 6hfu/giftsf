@@ -142,7 +142,7 @@ const now = Date.now();
 const lastReload = localStorage.getItem("lastReloadTime");
 
 if (lastReload) {
-    const diff = (now - Number(lastReload)) / 1000 / 60;
+    const diff = (now - Number(lastReload)) / 1000 / 120;
     if (diff >= RELOAD_LIMIT_MINUTES) {
         document.getElementById("reloadNotice").style.display = "block";
     }
