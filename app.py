@@ -175,7 +175,7 @@ def get_field_descriptions():
 
 def get_schedule_records():
     soql = """
-        SELECT Id, Name, Field334__c, Field97__c
+        SELECT Id, Name, Field334__c, Field97__c, Field313__c, Field357__c
         FROM Account
         WHERE Field76__r.Id = 'a05TL0000117wNyYAI'
           AND Field97__c != null
@@ -187,6 +187,9 @@ def get_schedule_records():
     for r in result["records"]:
         status = r.get("Field334__c")
         next_call = r.get("Field97__c")
+        store_url = r.get("Field313__c")
+        account_name = r.get("Name")
+        meeting_owner = r.get("Field357__c")  # ← 商談担当者名追加
 
         if not next_call:
             continue
@@ -199,10 +202,25 @@ def get_schedule_records():
             continue
 
         records.append({
-            "start": dt.strftime("%Y-%m-%dT%H:%M:%S")
+            "title": account_name,
+            "start": dt.strftime("%Y-%m-%dT%H:%M:%S"),
+
+            # ▼ 拡張情報
+            "extendedProps": {
+                "store_url": store_url,
+                "meeting_owner": meeting_owner
+            }
         })
 
     return records
+
+
+def round_time_1min(dt):
+    if isinstance(dt, str):
+        dt = datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S")
+
+    return dt.replace(second=0, microsecond=0)
+
 
 
 
