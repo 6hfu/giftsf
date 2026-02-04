@@ -1130,6 +1130,7 @@ def corporateform():
 @app.route('/corporateform_submit', methods=['POST'])
 @login_required
 def corporateform_submit():
+
     login_id = session.get('username')
 
     name = request.form.get('Name')
@@ -1137,14 +1138,17 @@ def corporateform_submit():
     owner_name = request.form.get('Field327__c')
     owner_phone = request.form.get('Field328__c')
 
-    # ▼ 追加項目
-    apo_status = request.form.get('Field353__c')     # 新規 / 見込
-    list_name = request.form.get('Field22__c')       # リスト名
-    store_url = request.form.get('Field313__c')      # 店舗URL
-    sales_comment = request.form.get('Field8__c')    # 営コメ
+    # ▼ NEW（LINE登録名追加）
+    line_name = request.form.get('Field358__c')
 
-    call_date = request.form.get('Field24__c')   # yyyy-mm-dd
-    call_time = request.form.get('Field25__c')   # HH:MM（JST）
+    # ▼ 既存追加項目
+    apo_status = request.form.get('Field353__c')
+    list_name = request.form.get('Field22__c')
+    store_url = request.form.get('Field313__c')
+    sales_comment = request.form.get('Field8__c')
+
+    call_date = request.form.get('Field24__c')
+    call_time = request.form.get('Field25__c')
 
     account_data = {
         "Name": name,
@@ -1153,7 +1157,10 @@ def corporateform_submit():
         "Field328__c": owner_phone,
         "Field207__c": login_id,
 
-        # ▼ 追加項目を Salesforce に反映
+        # ▼ NEW
+        "Field358__c": line_name,
+
+        # ▼ 既存
         "Field353__c": apo_status,
         "Field22__c": list_name,
         "Field313__c": store_url,
@@ -1168,12 +1175,15 @@ def corporateform_submit():
     zoom_invite = ""
 
     try:
+
         if call_date and call_time:
             account_data["Field24__c"] = call_date
 
             jst_dt = datetime.strptime(
-                f"{call_date} {call_time}", "%Y-%m-%d %H:%M"
+                f"{call_date} {call_time}",
+                "%Y-%m-%d %H:%M"
             )
+
             sf_time = (jst_dt + timedelta(hours=9)).time()
             account_data["Field25__c"] = sf_time.strftime("%H:%M:%S")
 
@@ -1181,8 +1191,9 @@ def corporateform_submit():
         result = sf.Account.create(account_data)
         account_id = result["id"]
 
-        # Zoom 作成（JST → UTC）
+        # Zoom 作成
         if call_date and call_time:
+
             utc_dt = jst_dt - timedelta(hours=9)
 
             meeting = create_zoom_meeting(
@@ -1216,3 +1227,4 @@ def corporateform_submit():
         message=message,
         zoom_url=meeting['join_url'] if meeting else None
     )
+
