@@ -252,7 +252,10 @@ document.getElementById("calendar"),
 
         const header = document.createElement("div");
         header.classList.add("meeting-header");
-        header.innerHTML = `<b>${timeText} 商談待ち</b>`;
+        
+        const count = meetings.length;
+        
+        header.innerHTML = `<b>${timeText} 商談待ち（${count}件）</b>`;
 
         const body = document.createElement("div");
         body.classList.add("meeting-body");
