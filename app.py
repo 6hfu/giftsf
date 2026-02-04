@@ -208,7 +208,8 @@ def get_schedule_records():
             # ▼ 拡張情報
             "extendedProps": {
                 "store_url": store_url,
-                "meeting_owner": meeting_owner
+                "meeting_owner": meeting_owner,
+                "status": status
             }
         })
 
