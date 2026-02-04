@@ -198,33 +198,47 @@ document.getElementById("calendar"),
     // チップ表示
     // ==========================
     eventContent: function(arg) {
-
+    
         const meetings = arg.event.extendedProps.meetings || [];
         const timeText = arg.timeText || "";
-
+    
         const wrapper = document.createElement("div");
-
-        let html = `<div><b>${timeText} 商談待ち</b></div>`;
-
-        meetings.slice(0, 3).forEach(m => {
-
+    
+        let html = `<div style="margin-bottom:6px;"><b>${timeText} 商談待ち</b></div>`;
+    
+        meetings.slice(0, 3).forEach((m, index) => {
+    
             const owner = m.extendedProps?.meeting_owner || "";
             const store = m.title || "";
-
+    
             html += `
-                <div>${store}</div>
-                <div style="font-size:12px;color:#333">${owner}</div>
+                <div>
+                    <div style="font-weight:600;">${store}</div>
+                    <div style="font-size:12px;color:#333;">${owner}</div>
+                </div>
             `;
+    
+            // ⭐ 区切り線（最後以外）
+            if (index < Math.min(meetings.length, 3) - 1) {
+                html += `
+                    <div style="
+                        border-bottom:1px solid rgba(0,0,0,0.2);
+                        margin:6px 0;
+                    "></div>
+                `;
+            }
+    
         });
-
+    
         if (meetings.length > 3) {
-            html += `<div>＋${meetings.length - 3}件</div>`;
+            html += `<div style="margin-top:4px;">＋${meetings.length - 3}件</div>`;
         }
-
+    
         wrapper.innerHTML = html;
-
+    
         return { domNodes: [wrapper] };
     }
+
 
 });
 
