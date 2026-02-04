@@ -33,6 +33,59 @@ body {
     overflow: hidden;
 }
 
+/* ===== チップ内部レイアウト ===== */
+.meeting-scroll {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* ヘッダー固定 */
+.meeting-header {
+    position: sticky;
+    top: 0;
+    background: inherit;
+    z-index: 2;
+    padding-bottom: 4px;
+}
+
+/* スクロール領域 */
+.meeting-body {
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.meeting-body::-webkit-scrollbar {
+    width: 0;
+}
+
+/* ホバー時だけスクロールバー表示 */
+.meeting-event:hover .meeting-body {
+    scrollbar-width: thin;
+}
+
+.meeting-event:hover .meeting-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.meeting-event:hover .meeting-body::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+}
+
+/* ＋件数固定 */
+.meeting-footer {
+    position: sticky;
+    bottom: 0;
+    background: inherit;
+    padding-top: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 /* リロード促し */
 #reloadNotice {
     position: fixed;
@@ -67,7 +120,6 @@ const RAW_EVENTS = {{ events | tojson | safe }};
 // ==========================
 function convertMeetingEvents() {
 
-    // JST補正 + 2時間
     const expanded = RAW_EVENTS.map(ev => {
 
         if (!ev.start) return null;
@@ -86,7 +138,6 @@ function convertMeetingEvents() {
 
     }).filter(Boolean);
 
-    // ---- グループ化（同開始分）
     const groups = {};
 
     expanded.forEach(ev => {
@@ -102,14 +153,12 @@ function convertMeetingEvents() {
         groups[key].push(ev);
     });
 
-    // ---- 色決定
     function getColor(count) {
-        if (count >= 3) return "#ef5350"; // 赤
-        if (count === 2) return "#ffa726"; // オレンジ
-        return "#42a5f5"; // 青
+        if (count >= 3) return "#ef5350";
+        if (count === 2) return "#ffa726";
+        return "#42a5f5";
     }
 
-    // ---- 1イベント化
     const merged = [];
 
     Object.values(groups).forEach(list => {
@@ -122,14 +171,10 @@ function convertMeetingEvents() {
             end: base.end,
             title: "商談待ち",
             classNames: ['meeting-event'],
-
             backgroundColor: getColor(count),
             borderColor: getColor(count),
             textColor: "#000",
-
-            extendedProps: {
-                meetings: list
-            }
+            extendedProps: { meetings: list }
         });
 
     });
@@ -198,47 +243,60 @@ document.getElementById("calendar"),
     // チップ表示
     // ==========================
     eventContent: function(arg) {
-    
+
         const meetings = arg.event.extendedProps.meetings || [];
         const timeText = arg.timeText || "";
-    
+
         const wrapper = document.createElement("div");
-    
-        let html = `<div style="margin-bottom:6px;"><b>${timeText} 商談待ち</b></div>`;
-    
+        wrapper.classList.add("meeting-scroll");
+
+        const header = document.createElement("div");
+        header.classList.add("meeting-header");
+        header.innerHTML = `<b>${timeText} 商談待ち</b>`;
+
+        const body = document.createElement("div");
+        body.classList.add("meeting-body");
+
+        let bodyHtml = "";
+
         meetings.slice(0, 3).forEach((m, index) => {
-    
+
             const owner = m.extendedProps?.meeting_owner || "";
             const store = m.title || "";
-    
-            html += `
+
+            bodyHtml += `
                 <div>
                     <div style="font-weight:600;">${store}</div>
                     <div style="font-size:12px;color:#333;">${owner}</div>
                 </div>
             `;
-    
-            // ⭐ 区切り線（最後以外）
+
             if (index < Math.min(meetings.length, 3) - 1) {
-                html += `
+                bodyHtml += `
                     <div style="
                         border-bottom:1px solid rgba(0,0,0,0.2);
                         margin:6px 0;
                     "></div>
                 `;
             }
-    
         });
-    
+
+        body.innerHTML = bodyHtml;
+
+        let footer = null;
+
         if (meetings.length > 3) {
-            html += `<div style="margin-top:4px;">＋${meetings.length - 3}件</div>`;
+            footer = document.createElement("div");
+            footer.classList.add("meeting-footer");
+            footer.textContent = `＋${meetings.length - 3}件`;
         }
-    
-        wrapper.innerHTML = html;
-    
+
+        wrapper.appendChild(header);
+        wrapper.appendChild(body);
+        if (footer) wrapper.appendChild(footer);
+
         return { domNodes: [wrapper] };
     }
-
 
 });
 
