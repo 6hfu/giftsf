@@ -1094,12 +1094,7 @@ def corporateform():
 
     today = datetime.now(JST).date().isoformat()
 
-    apo_default_comment = """【APOフォーマット】
-店舗名：
-店舗URL：
-商談日時：
-オーナー名：
-携帯番号：
+    apo_default_comment = """【営コメ】
 LINE登録：未・済
 メールアドレス（LINE未登録の場合）：
 備考（雰囲気や訴求ポイント）：
