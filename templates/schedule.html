@@ -2,79 +2,99 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>商談カレンダー（週）</title>
+<title>商談カレンダー</title>
 
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
-body {
-    background: #f5f7fa;
-    font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
-    margin: 0;
+body{
+    background:#f5f7fa;
+    font-family:"Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
+    margin:0;
 }
 
 /* 土日背景 */
-.fc-day-sun { background: rgba(244,67,54,0.06); }
-.fc-day-sat { background: rgba(33,150,243,0.06); }
+.fc-day-sun{ background:rgba(244,67,54,0.06); }
+.fc-day-sat{ background:rgba(33,150,243,0.06); }
 
-/* 時間枠高さ（見た目のみ） */
-.fc-timegrid-slot {
-    height: 34px !important;
+/* 時間枠高さ */
+.fc-timegrid-slot{
+    height:34px !important;
 }
 
-/* ⭐ FullCalendarのoverflow解除 */
+/* ⭐ FullCalendar制御解除（超重要） */
+.fc-timegrid-event-harness{
+    overflow:visible !important;
+}
 .fc-event-main,
-.fc-event-main-frame {
-    overflow: visible !important;
+.fc-event-main-frame{
+    overflow:visible !important;
 }
 
 /* ===== 商談チップ ===== */
-.meeting-event {
-    border-radius: 8px;
-    padding: 6px;
-    font-size: 13px;
-    line-height: 1.3;
+.meeting-event{
+    border-radius:8px;
+    padding:6px;
+    font-size:13px;
+    line-height:1.3;
 
-    height: 144px;
-    min-height: 144px;
-
-    display: flex;
-    flex-direction: column;
+    height:144px; /* ⭐ 2時間固定 */
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
 }
 
-/* ⭐ チップ内部スクロール */
-.meeting-scroll {
-    flex: 1;
-    overflow-y: auto;
-    pointer-events: auto;
-    padding-right: 4px;
+/* ヘッダー */
+.meeting-header{
+    font-weight:600;
+    margin-bottom:6px;
+    flex-shrink:0;
 }
 
-.meeting-scroll::-webkit-scrollbar {
-    width: 4px;
-}
-.meeting-scroll::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.3);
-    border-radius: 10px;
+/* スクロール領域 */
+.meeting-scroll{
+    flex:1;
+    overflow-y:auto;
+    padding-right:4px;
 }
 
-/* リロードバー */
-#reloadNotice {
-    position: fixed;
-    bottom: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1976D2;
-    color: #fff;
-    padding: 12px 20px;
-    border-radius: 999px;
-    font-size: 14px;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-    cursor: pointer;
-    display: none;
-    z-index: 9999;
+/* 項目 */
+.meeting-item{
+    padding-bottom:6px;
+    margin-bottom:6px;
+    border-bottom:1px solid rgba(0,0,0,0.15);
+}
+.meeting-item:last-child{
+    border-bottom:none;
+    margin-bottom:0;
+}
+
+/* スクロールバー */
+.meeting-scroll::-webkit-scrollbar{
+    width:4px;
+}
+.meeting-scroll::-webkit-scrollbar-thumb{
+    background:rgba(0,0,0,0.3);
+    border-radius:10px;
+}
+
+/* リロード通知 */
+#reloadNotice{
+    position:fixed;
+    bottom:16px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#1976D2;
+    color:#fff;
+    padding:12px 20px;
+    border-radius:999px;
+    font-size:14px;
+    font-weight:600;
+    box-shadow:0 4px 12px rgba(0,0,0,0.25);
+    cursor:pointer;
+    display:none;
+    z-index:9999;
 }
 </style>
 </head>
@@ -86,88 +106,103 @@ body {
 
 <script>
 
+// ==========================
 // Salesforceイベント
+// ==========================
 const RAW_EVENTS = {{ events | tojson | safe }};
 
+// ==========================
 // 件数 → 色
+// ==========================
 function getColor(count){
-    if(count === 1) return "#64B5F6";
-    if(count === 2) return "#FFB74D";
+    if(count===1) return "#64B5F6";
+    if(count===2) return "#FFB74D";
     return "#E53935";
 }
 
-// グループ化
+// ==========================
+// JST補正 + グループ化
+// ==========================
 function groupMeetings(){
 
-    const map = {};
+    const map={};
 
-    RAW_EVENTS.forEach(ev => {
+    RAW_EVENTS.forEach(ev=>{
 
         if(!ev.start) return;
 
-        const start = new Date(ev.start);
-        start.setHours(start.getHours()+9); // JST補正
+        const start=new Date(ev.start);
+        start.setHours(start.getHours()+9);
 
-        const date = start.toISOString().split("T")[0];
-        const time = start.toTimeString().slice(0,5);
+        const date=start.toISOString().split("T")[0];
+        const time=start.toTimeString().slice(0,5);
 
-        map[date] ??= {};
-        map[date][time] ??= [];
+        map[date]??={};
+        map[date][time]??=[];
         map[date][time].push(ev);
     });
 
-    const groupedEvents = [];
+    const grouped=[];
 
     Object.keys(map).forEach(date=>{
         Object.keys(map[date]).forEach(time=>{
 
-            const meetings = map[date][time];
+            const meetings=map[date][time];
 
-            const start = new Date(`${date}T${time}:00`);
-            const end = new Date(start);
+            const start=new Date(`${date}T${time}:00`);
+            const end=new Date(start);
             end.setHours(end.getHours()+2);
 
-            const color = getColor(meetings.length);
+            const color=getColor(meetings.length);
 
-            groupedEvents.push({
-                start:start,
-                end:end,
+            grouped.push({
+                start,
+                end,
                 classNames:["meeting-event"],
                 backgroundColor:color,
                 borderColor:color,
                 textColor:"#000",
-                extendedProps:{ meetings }
+                extendedProps:{meetings}
             });
         });
     });
 
-    return groupedEvents;
+    return grouped;
 }
 
-// リロード通知
-const now = Date.now();
-const lastReload = localStorage.getItem("lastReloadTime");
+// ==========================
+// リロード管理
+// ==========================
+const now=Date.now();
+const lastReload=localStorage.getItem("lastReloadTime");
 
 if(lastReload){
-    const diff = (now-Number(lastReload))/60000;
+    const diff=(now-Number(lastReload))/60000;
     if(diff>=10){
         document.getElementById("reloadNotice").style.display="block";
     }
 }
 
-document.getElementById("reloadNotice").onclick = ()=>location.reload();
+document.getElementById("reloadNotice").onclick=()=>location.reload();
 localStorage.setItem("lastReloadTime",now);
 
+// ==========================
 // カレンダー生成
-const calendar = new FullCalendar.Calendar(
+// ==========================
+const calendar=new FullCalendar.Calendar(
 document.getElementById("calendar"),
 {
     locale:"ja",
     initialView:"timeGridWeek",
     height:"100vh",
 
+    /* ⭐ 重なり制御（超重要） */
+    eventOverlap:true,
+    slotEventOverlap:true,
+    eventMaxStack:1,
+
     customButtons:{
-        reload:{ text:"再読込", click:()=>location.reload() },
+        reload:{text:"再読込",click:()=>location.reload()},
         corporateform:{
             text:"商談登録",
             click:()=>location.href="https://giftsf.onrender.com/corporateform"
@@ -189,51 +224,42 @@ document.getElementById("calendar"),
     slotMinTime:"09:00:00",
     slotMaxTime:"20:00:00",
 
-    events: groupMeetings(),
+    events:groupMeetings(),
 
-    // ⭐ チップ描画
+    // ==========================
+    // チップUI
+    // ==========================
     eventContent:function(arg){
 
-        const meetings = arg.event.extendedProps.meetings || [];
-        const timeText = arg.timeText || "";
+        const meetings=arg.event.extendedProps.meetings||[];
+        const timeText=arg.timeText||"";
 
-        const wrapper = document.createElement("div");
+        const wrapper=document.createElement("div");
 
-        let html = `
-            <div style="margin-bottom:6px;">
-                <b>${timeText} 商談待ち</b>
+        let html=`
+            <div class="meeting-header">
+                ${timeText} 商談
             </div>
             <div class="meeting-scroll">
         `;
 
-        meetings.forEach((m,index)=>{
+        meetings.forEach(m=>{
 
-            const store = m.title || "";
-            const owner = m.extendedProps?.meeting_owner || "";
+            const store=m.title||"";
+            const owner=m.extendedProps?.meeting_owner||"";
 
-            html += `
-                <div>
-                    <div style="font-weight:600;">${store}</div>
-                    <div style="font-size:12px;color:#333;">${owner}</div>
+            html+=`
+                <div class="meeting-item">
+                    <div style="font-weight:600">${store}</div>
+                    <div style="font-size:12px;color:#333">${owner}</div>
                 </div>
             `;
-
-            if(index < meetings.length-1){
-                html += `
-                    <div style="
-                        border-bottom:1px solid rgba(0,0,0,0.15);
-                        margin:6px 0;
-                    "></div>
-                `;
-            }
-
         });
 
-        html += `</div>`;
+        html+=`</div>`;
+        wrapper.innerHTML=html;
 
-        wrapper.innerHTML = html;
-
-        return { domNodes:[wrapper] };
+        return {domNodes:[wrapper]};
     }
 
 });
