@@ -25,7 +25,7 @@
         border-radius: 1rem;
         box-shadow: 0 8px 24px rgba(0,0,0,0.1);
         padding: 2rem 2.5rem;
-        max-width: 600px;
+        max-width: 650px;
         margin: auto;
     }
 
@@ -53,6 +53,11 @@
         box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25);
     }
 
+    textarea.form-control {
+        min-height: 220px;
+        white-space: pre-wrap;
+    }
+
     button.btn-primary {
         padding: 0.75rem 2rem;
         font-size: 1.1rem;
@@ -69,6 +74,11 @@
     .is-invalid {
         border-color: #dc3545 !important;
         box-shadow: 0 0 0 0.2rem rgba(220,53,69,.25) !important;
+    }
+
+    .section-divider {
+        margin: 2rem 0 1.5rem;
+        border-top: 1px dashed #ced4da;
     }
 </style>
 </head>
@@ -111,6 +121,36 @@
             <input type="tel" class="form-control" id="Field328__c" name="Field328__c">
         </div>
 
+        <div class="section-divider"></div>
+
+        <!-- APO（新規・見込） -->
+        <div class="mb-3">
+            <label for="Field353__c" class="form-label">APO</label>
+            <select class="form-select" id="Field353__c" name="Field353__c">
+                <option value="">選択してください</option>
+                <option value="新規">新規</option>
+                <option value="見込">見込</option>
+            </select>
+        </div>
+
+        <!-- リスト名 -->
+        <div class="mb-3">
+            <label for="Field22__c" class="form-label">リスト名</label>
+            <input type="text" class="form-control" id="Field22__c" name="Field22__c">
+        </div>
+
+        <!-- 営コメ -->
+        <div class="mb-3">
+            <label for="Field8__c" class="form-label">営コメ</label>
+            <textarea
+                class="form-control"
+                id="Field8__c"
+                name="Field8__c"
+            >{{ apo_default_comment }}</textarea>
+        </div>
+
+        <div class="section-divider"></div>
+
         <!-- 商談希望日 -->
         <div class="mb-3">
             <label for="Field24__c" class="form-label">
@@ -119,7 +159,7 @@
             <input type="date" class="form-control" id="Field24__c" name="Field24__c" required>
         </div>
 
-        <!-- 商談希望時間（1分単位） -->
+        <!-- 商談希望時間 -->
         <div class="mb-3">
             <label for="Field25__c" class="form-label">
                 商談希望時間 <span class="text-danger-small">※必須</span>
@@ -138,7 +178,7 @@
         </div>
 
         <!-- 獲得者（ログインID） -->
-        <input type="hidden" name="Field207__c" value="{{ basic_auth_user_id }}">
+        <input type="hidden" name="Field207__c" value="{{ login_id }}">
 
         <button type="submit" class="btn btn-primary">送信</button>
     </form>
@@ -159,10 +199,8 @@ $(document).ready(function () {
     $('#appointmentForm').on('submit', function (e) {
         let isValid = true;
 
-        // 赤枠リセット
         requiredFields.forEach(id => $('#' + id).removeClass('is-invalid'));
 
-        // 必須チェック
         requiredFields.forEach(id => {
             const val = $('#' + id).val();
             if (!val || val.trim() === "") {
@@ -177,7 +215,7 @@ $(document).ready(function () {
             return false;
         }
 
-        // 送信前に time フィールドを安全に HH:MM に補正
+        // time 補正
         const timeField = $('#Field25__c');
         let timeVal = timeField.val();
         if (timeVal && /^\d{1,2}:\d{2}$/.test(timeVal)) {
