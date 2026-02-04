@@ -50,8 +50,6 @@ body {
     display: none;
     z-index: 9999;
 }
-#reloadNotice:hover { background: #0D47A1; }
-
 </style>
 </head>
 
@@ -62,39 +60,81 @@ body {
 
 <script>
 
-// ==========================
-// サーバーイベント
-// ==========================
 const RAW_EVENTS = {{ events | tojson | safe }};
 
 // ==========================
-// JST補正＋2時間チップ化
+// 同時刻まとめ + 色分け
 // ==========================
 function convertMeetingEvents() {
 
-    return RAW_EVENTS.map(ev => {
+    // JST補正 + 2時間
+    const expanded = RAW_EVENTS.map(ev => {
 
         if (!ev.start) return null;
 
-        // +9時間補正
         const start = new Date(ev.start);
         start.setHours(start.getHours() + 9);
 
-        // 2時間表示
         const end = new Date(start);
         end.setHours(end.getHours() + 2);
 
         return {
             ...ev,
-            start: start,
-            end: end,
-            classNames: ['meeting-event'],
-            backgroundColor: '#64B5F6',
-            borderColor: '#64B5F6',
-            textColor: '#000'
+            start,
+            end
         };
 
     }).filter(Boolean);
+
+    // ---- グループ化（同開始分）
+    const groups = {};
+
+    expanded.forEach(ev => {
+
+        const key =
+            ev.start.getFullYear() + "-" +
+            ev.start.getMonth() + "-" +
+            ev.start.getDate() + "-" +
+            ev.start.getHours() + ":" +
+            ev.start.getMinutes();
+
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(ev);
+    });
+
+    // ---- 色決定
+    function getColor(count) {
+        if (count >= 3) return "#ef5350"; // 赤
+        if (count === 2) return "#ffa726"; // オレンジ
+        return "#42a5f5"; // 青
+    }
+
+    // ---- 1イベント化
+    const merged = [];
+
+    Object.values(groups).forEach(list => {
+
+        const base = list[0];
+        const count = list.length;
+
+        merged.push({
+            start: base.start,
+            end: base.end,
+            title: "商談待ち",
+            classNames: ['meeting-event'],
+
+            backgroundColor: getColor(count),
+            borderColor: getColor(count),
+            textColor: "#000",
+
+            extendedProps: {
+                meetings: list
+            }
+        });
+
+    });
+
+    return merged;
 }
 
 // ==========================
@@ -118,7 +158,7 @@ localStorage.setItem("lastReloadTime", now);
 // カレンダー
 // ==========================
 const calendar = new FullCalendar.Calendar(
-    document.getElementById("calendar"),
+document.getElementById("calendar"),
 {
     locale: "ja",
     initialView: "timeGridWeek",
@@ -155,25 +195,33 @@ const calendar = new FullCalendar.Calendar(
     events: convertMeetingEvents(),
 
     // ==========================
-    // チップ表示カスタム
+    // チップ表示
     // ==========================
     eventContent: function(arg) {
 
-        const ev = arg.event;
-        const props = ev.extendedProps || {};
-
+        const meetings = arg.event.extendedProps.meetings || [];
         const timeText = arg.timeText || "";
-        const status = props.status || "";
-        const store = ev.title || "";
-        const owner = props.meeting_owner || "";
 
         const wrapper = document.createElement("div");
 
-        wrapper.innerHTML = `
-            <div><b>${timeText}${status ? " " + status : ""}</b></div>
-            <div>${store}</div>
-            <div>${owner}</div>
-        `;
+        let html = `<div><b>${timeText} 商談待ち</b></div>`;
+
+        meetings.slice(0, 3).forEach(m => {
+
+            const owner = m.extendedProps?.meeting_owner || "";
+            const store = m.title || "";
+
+            html += `
+                <div>${store}</div>
+                <div style="font-size:12px;color:#333">${owner}</div>
+            `;
+        });
+
+        if (meetings.length > 3) {
+            html += `<div>＋${meetings.length - 3}件</div>`;
+        }
+
+        wrapper.innerHTML = html;
 
         return { domNodes: [wrapper] };
     }
@@ -183,6 +231,5 @@ const calendar = new FullCalendar.Calendar(
 calendar.render();
 
 </script>
-
 </body>
 </html>
