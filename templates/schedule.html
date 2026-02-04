@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>商談カレンダー</title>
+<title>商談カレンダー（週）</title>
 
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
@@ -10,7 +10,7 @@
 <style>
 body {
     background: #f5f7fa;
-    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
+    font-family: "Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;
     margin: 0;
 }
 
@@ -18,17 +18,15 @@ body {
 .fc-day-sun { background: rgba(244,67,54,0.06); }
 .fc-day-sat { background: rgba(33,150,243,0.06); }
 
-/* 時間枠高さ */
+/* 時間枠高さ（見た目のみ） */
 .fc-timegrid-slot {
     height: 34px !important;
 }
 
-/* ⭐ FullCalendar内部高さ補正 */
-.fc-timegrid-event-harness,
-.fc-timegrid-event,
+/* ⭐ FullCalendarのoverflow解除 */
 .fc-event-main,
 .fc-event-main-frame {
-    height: 100%;
+    overflow: visible !important;
 }
 
 /* ===== 商談チップ ===== */
@@ -38,40 +36,21 @@ body {
     font-size: 13px;
     line-height: 1.3;
 
-    /* ⭐ 2時間固定 */
     height: 144px;
+    min-height: 144px;
 
     display: flex;
     flex-direction: column;
-    overflow: hidden;
 }
 
-/* ヘッダー */
-.meeting-header {
-    font-weight: 600;
-    margin-bottom: 6px;
-    flex-shrink: 0;
-}
-
-/* スクロール部分 */
+/* ⭐ チップ内部スクロール */
 .meeting-scroll {
     flex: 1;
     overflow-y: auto;
+    pointer-events: auto;
     padding-right: 4px;
 }
 
-/* 区切り */
-.meeting-item {
-    padding-bottom: 6px;
-    margin-bottom: 6px;
-    border-bottom: 1px solid rgba(0,0,0,0.15);
-}
-.meeting-item:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-/* スクロールバー */
 .meeting-scroll::-webkit-scrollbar {
     width: 4px;
 }
@@ -80,7 +59,7 @@ body {
     border-radius: 10px;
 }
 
-/* リロード通知 */
+/* リロードバー */
 #reloadNotice {
     position: fixed;
     bottom: 16px;
@@ -107,23 +86,17 @@ body {
 
 <script>
 
-// ==========================
 // Salesforceイベント
-// ==========================
 const RAW_EVENTS = {{ events | tojson | safe }};
 
-// ==========================
 // 件数 → 色
-// ==========================
 function getColor(count){
     if(count === 1) return "#64B5F6";
     if(count === 2) return "#FFB74D";
     return "#E53935";
 }
 
-// ==========================
-// JST補正 + グループ化
-// ==========================
+// グループ化
 function groupMeetings(){
 
     const map = {};
@@ -133,7 +106,7 @@ function groupMeetings(){
         if(!ev.start) return;
 
         const start = new Date(ev.start);
-        start.setHours(start.getHours()+9);
+        start.setHours(start.getHours()+9); // JST補正
 
         const date = start.toISOString().split("T")[0];
         const time = start.toTimeString().slice(0,5);
@@ -141,10 +114,9 @@ function groupMeetings(){
         map[date] ??= {};
         map[date][time] ??= [];
         map[date][time].push(ev);
-
     });
 
-    const grouped = [];
+    const groupedEvents = [];
 
     Object.keys(map).forEach(date=>{
         Object.keys(map[date]).forEach(time=>{
@@ -157,25 +129,22 @@ function groupMeetings(){
 
             const color = getColor(meetings.length);
 
-            grouped.push({
-                start,
-                end,
+            groupedEvents.push({
+                start:start,
+                end:end,
                 classNames:["meeting-event"],
                 backgroundColor:color,
                 borderColor:color,
                 textColor:"#000",
                 extendedProps:{ meetings }
             });
-
         });
     });
 
-    return grouped;
+    return groupedEvents;
 }
 
-// ==========================
-// リロード管理
-// ==========================
+// リロード通知
 const now = Date.now();
 const lastReload = localStorage.getItem("lastReloadTime");
 
@@ -189,9 +158,7 @@ if(lastReload){
 document.getElementById("reloadNotice").onclick = ()=>location.reload();
 localStorage.setItem("lastReloadTime",now);
 
-// ==========================
-// カレンダー
-// ==========================
+// カレンダー生成
 const calendar = new FullCalendar.Calendar(
 document.getElementById("calendar"),
 {
@@ -224,9 +191,7 @@ document.getElementById("calendar"),
 
     events: groupMeetings(),
 
-    // ==========================
-    // チップUI
-    // ==========================
+    // ⭐ チップ描画
     eventContent:function(arg){
 
         const meetings = arg.event.extendedProps.meetings || [];
@@ -235,25 +200,37 @@ document.getElementById("calendar"),
         const wrapper = document.createElement("div");
 
         let html = `
-            <div class="meeting-header">
-                ${timeText} 商談待ち
+            <div style="margin-bottom:6px;">
+                <b>${timeText} 商談待ち</b>
             </div>
             <div class="meeting-scroll">
         `;
 
-        meetings.forEach(m=>{
+        meetings.forEach((m,index)=>{
+
             const store = m.title || "";
             const owner = m.extendedProps?.meeting_owner || "";
 
             html += `
-                <div class="meeting-item">
-                    <div style="font-weight:600">${store}</div>
-                    <div style="font-size:12px;color:#333">${owner}</div>
+                <div>
+                    <div style="font-weight:600;">${store}</div>
+                    <div style="font-size:12px;color:#333;">${owner}</div>
                 </div>
             `;
+
+            if(index < meetings.length-1){
+                html += `
+                    <div style="
+                        border-bottom:1px solid rgba(0,0,0,0.15);
+                        margin:6px 0;
+                    "></div>
+                `;
+            }
+
         });
 
         html += `</div>`;
+
         wrapper.innerHTML = html;
 
         return { domNodes:[wrapper] };
