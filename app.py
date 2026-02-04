@@ -1094,8 +1094,7 @@ def corporateform():
 
     today = datetime.now(JST).date().isoformat()
 
-    apo_default_comment = """【営コメ】
-LINE登録：未・済
+    apo_default_comment = """LINE登録：未・済
 メールアドレス（LINE未登録の場合）：
 備考（雰囲気や訴求ポイント）：
 """
@@ -1120,9 +1119,10 @@ def corporateform_submit():
     owner_phone = request.form.get('Field328__c')
 
     # ▼ 追加項目
-    apo_status = request.form.get('Field353__c')   # 新規 / 見込
-    list_name = request.form.get('Field22__c')     # リスト名
-    sales_comment = request.form.get('Field8__c')  # 営コメ
+    apo_status = request.form.get('Field353__c')     # 新規 / 見込
+    list_name = request.form.get('Field22__c')       # リスト名
+    store_url = request.form.get('Field313__c')      # 店舗URL
+    sales_comment = request.form.get('Field8__c')    # 営コメ
 
     call_date = request.form.get('Field24__c')   # yyyy-mm-dd
     call_time = request.form.get('Field25__c')   # HH:MM（JST）
@@ -1137,6 +1137,7 @@ def corporateform_submit():
         # ▼ 追加項目を Salesforce に反映
         "Field353__c": apo_status,
         "Field22__c": list_name,
+        "Field313__c": store_url,
         "Field8__c": sales_comment,
 
         "Field56__c": "希望無し",
@@ -1151,13 +1152,17 @@ def corporateform_submit():
         if call_date and call_time:
             account_data["Field24__c"] = call_date
 
-            jst_dt = datetime.strptime(f"{call_date} {call_time}", "%Y-%m-%d %H:%M")
+            jst_dt = datetime.strptime(
+                f"{call_date} {call_time}", "%Y-%m-%d %H:%M"
+            )
             sf_time = (jst_dt + timedelta(hours=9)).time()
             account_data["Field25__c"] = sf_time.strftime("%H:%M:%S")
 
+        # Salesforce 作成
         result = sf.Account.create(account_data)
         account_id = result["id"]
 
+        # Zoom 作成（JST → UTC）
         if call_date and call_time:
             utc_dt = jst_dt - timedelta(hours=9)
 
@@ -1177,7 +1182,11 @@ def corporateform_submit():
                 "Field351__c": zoom_invite
             })
 
-        message = "Salesforce作成＆Zoomミーティング発行が完了しました" if meeting else "Salesforce作成が完了しました"
+        message = (
+            "Salesforce作成＆Zoomミーティング発行が完了しました"
+            if meeting else
+            "Salesforce作成が完了しました"
+        )
 
     except Exception as e:
         message = f"エラーが発生しました: {str(e)}"
