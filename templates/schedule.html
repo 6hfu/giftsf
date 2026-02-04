@@ -29,16 +29,17 @@ body {
     padding: 6px;
     font-size: 13px;
     line-height: 1.3;
-    height: 144px;   /* ⭐ 固定高さ */
+    height: 144px;
     overflow: hidden;
 }
 
-/* ⭐ チップ内部スクロール */
+/* ⭐ 内部スクロール */
 .meeting-scroll {
-    max-height: 124px;
+    max-height: calc(100% - 4px);
     overflow-y: auto;
     padding-right: 4px;
 }
+
 
 .meeting-scroll::-webkit-scrollbar {
     width: 4px;
