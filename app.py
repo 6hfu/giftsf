@@ -1094,11 +1094,24 @@ def corporateform():
 
     today = datetime.now(JST).date().isoformat()
 
+    apo_default_comment = """【APOフォーマット】
+店舗名：
+店舗URL：
+商談日時：
+オーナー名：
+携帯番号：
+LINE登録：未・済
+メールアドレス（LINE未登録の場合）：
+備考（雰囲気や訴求ポイント）：
+"""
+
     return render_template(
         'corporateform.html',
         today=today,
-        login_id=login_id
+        login_id=login_id,
+        apo_default_comment=apo_default_comment
     )
+
 
 # submit 名前と重複しないように変更
 @app.route('/corporateform_submit', methods=['POST'])
@@ -1110,6 +1123,12 @@ def corporateform_submit():
     phone = request.form.get('X1__c')
     owner_name = request.form.get('Field327__c')
     owner_phone = request.form.get('Field328__c')
+
+    # ▼ 追加項目
+    apo_status = request.form.get('Field353__c')   # 新規 / 見込
+    list_name = request.form.get('Field22__c')     # リスト名
+    sales_comment = request.form.get('Field8__c')  # 営コメ
+
     call_date = request.form.get('Field24__c')   # yyyy-mm-dd
     call_time = request.form.get('Field25__c')   # HH:MM（JST）
 
@@ -1119,6 +1138,11 @@ def corporateform_submit():
         "Field327__c": owner_name,
         "Field328__c": owner_phone,
         "Field207__c": login_id,
+
+        # ▼ 追加項目を Salesforce に反映
+        "Field353__c": apo_status,
+        "Field22__c": list_name,
+        "Field8__c": sales_comment,
 
         "Field56__c": "希望無し",
         "Field76__c": "a05TL0000117wNyYAI",
@@ -1130,19 +1154,15 @@ def corporateform_submit():
 
     try:
         if call_date and call_time:
-            # Date はそのまま
             account_data["Field24__c"] = call_date
 
-            # ▼ Salesforce Time 用（+9時間して入れる）
             jst_dt = datetime.strptime(f"{call_date} {call_time}", "%Y-%m-%d %H:%M")
             sf_time = (jst_dt + timedelta(hours=9)).time()
             account_data["Field25__c"] = sf_time.strftime("%H:%M:%S")
 
-        # Salesforce 作成
         result = sf.Account.create(account_data)
         account_id = result["id"]
 
-        # Zoom 用（JST → UTC）
         if call_date and call_time:
             utc_dt = jst_dt - timedelta(hours=9)
 
