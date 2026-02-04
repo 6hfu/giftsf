@@ -58,25 +58,8 @@
     <div id="reloadNotice">⟳ しばらく更新されていません。クリックして再読み込み</div>
 
     <script>
-    // ==========================
-    // サーバーから取得したイベント
-    // ==========================
     const RAW_EVENTS = {{ events | tojson | safe }};
     
-    // ==========================
-    // 件数ごとの色
-    // ==========================
-    function getColorByCount(count) {
-        const colors = [
-            '#64B5F6', // 1件：青（濃すぎない）
-            '#FFF176', // 2件：黄色
-            '#FFB300', // 3件：オレンジ
-            '#E53935', // 4件以上：赤
-        ];
-        return colors[Math.min(count - 1, colors.length - 1)];
-    }
-    
-        
     // ==========================
     // 文字色自動判定
     // ==========================
@@ -87,122 +70,58 @@
     }
     
     // ==========================
-    // 1分単位で件数集計（+9時間補正）
+    // 個別イベント生成
     // ==========================
-    function generateSummaryEvents() {
-        const summaryMap = {};
+    function generateMeetingEvents() {
+    
+        const events = [];
     
         RAW_EVENTS.forEach(ev => {
+    
             if (!ev.start) return;
     
             // UTC → JST
             const dt = new Date(ev.start);
             dt.setHours(dt.getHours() + 9);
     
-            const dateStr = dt.toISOString().split("T")[0];
-            const hour = dt.getHours();
-            const minute = dt.getMinutes();
+            const start = new Date(dt);
     
-            const timeKey =
-                `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+            // 2時間表示
+            const end = new Date(dt);
+            end.setHours(end.getHours() + 2);
+            end.setMinutes(end.getMinutes() - 1);
     
-            summaryMap[dateStr] ??= {};
-            summaryMap[dateStr][timeKey] =
-                (summaryMap[dateStr][timeKey] || 0) + 1;
+            const hh = String(start.getHours()).padStart(2,'0');
+            const mm = String(start.getMinutes()).padStart(2,'0');
+    
+            const eh = String(end.getHours()).padStart(2,'0');
+            const em = String(end.getMinutes()).padStart(2,'0');
+    
+            const timeText = `${hh}:${mm}~${eh}:${em}`;
+    
+            const account = ev.title || "名称未設定";
+            const owner = ev.extendedProps?.meeting_owner || "";
+    
+            const bg = "#64B5F6";
+    
+            events.push({
+                title:
+                    `${timeText}\n${account}\n${owner}`,
+    
+                start: start,
+                end: end,
+    
+                backgroundColor: bg,
+                borderColor: bg,
+                textColor: getTextColor(bg),
+    
+                classNames: ['summary-event']
+            });
+    
         });
     
-        const events = [];
-    
-        for (const date in summaryMap) {
-            for (const time in summaryMap[date]) {
-                const count = summaryMap[date][time];
-                const [h, m] = time.split(":").map(Number);
-    
-                // 2時間分の表示に変更
-                let endH = h + 2;
-                let endM = m - 1;
-                if (endH >= 24) {
-                    endH = 23;
-                    endM = 59;
-                }
-    
-                const bg = getColorByCount(count);
-    
-                events.push({
-                    title: `${count}件`,
-                    start: `${date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`,
-                    end: `${date}T${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}:00`,
-                    display: 'block',
-                    backgroundColor: bg,
-                    borderColor: bg,
-                    textColor: getTextColor(bg),
-                    classNames: ['summary-event']
-                });
-            }
-        }
         return events;
     }
-    
-    // ==========================
-    // リロード管理
-    // ==========================
-    const RELOAD_LIMIT_MINUTES = 10;
-    const now = Date.now();
-    const lastReload = localStorage.getItem("lastReloadTime");
-    
-    if (lastReload) {
-        const diff = (now - Number(lastReload)) / 1000 / 60;
-        if (diff >= RELOAD_LIMIT_MINUTES) {
-            document.getElementById("reloadNotice").style.display = "block";
-        }
-    }
-    
-    document.getElementById("reloadNotice").onclick = () => location.reload();
-    localStorage.setItem("lastReloadTime", now);
-    
-    // ==========================
-    // カレンダー初期化
-    // ==========================
-    const calendar = new FullCalendar.Calendar(
-        document.getElementById("calendar"),
-        {
-            locale: "ja",
-            initialView: "timeGridWeek",
-            height: "100vh",
-    
-            customButtons: {
-                reload: {
-                    text: "再読込",
-                    click: () => location.reload()
-                },
-                corporateform: {
-                    text: "商談登録",
-                    click: () =>
-                        location.href = "https://giftsf.onrender.com/corporateform"
-                },
-                backmenu: {
-                    text: "メニューに戻る",
-                    click: () =>
-                        location.href = "https://giftsf.onrender.com/menu_page"
-                }
-            },
-    
-            headerToolbar: {
-                left: "prev,next today reload",
-                center: "title",
-                right: "backmenu corporateform"
-            },
-    
-            nowIndicator: true,
-            allDaySlot: false,
-            slotMinTime: "09:00:00",
-            slotMaxTime: "20:00:00",
-    
-            events: generateSummaryEvents()
-        }
-    );
-    
-    calendar.render();
     </script>
 
 </body>
