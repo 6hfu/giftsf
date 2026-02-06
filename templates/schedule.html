@@ -182,26 +182,24 @@ document.getElementById("calendar"),
     height: "100vh",
 
     // ★追加：ダブルクリック登録
-    dateClick: function(info){
-        if(info.jsEvent.detail !== 2) return;
-
-        const dt = info.date;
-
-        const yyyy = dt.getFullYear();
-        const mm = String(dt.getMonth()+1).padStart(2,'0');
-        const dd = String(dt.getDate()).padStart(2,'0');
-
-        const hh = String(dt.getHours()).padStart(2,'0');
-        const mi = String(dt.getMinutes()).padStart(2,'0');
-
+    dateClick: function(info) {
+    
+        const d = new Date(info.date);
+    
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mi = String(d.getMinutes()).padStart(2, '0');
+    
         const date = `${yyyy}-${mm}-${dd}`;
         const time = `${hh}:${mi}`;
-
-        if(confirm(`${date} ${time} を商談希望日時として登録しますか？`)){
-            location.href =
-            `https://giftsf.onrender.com/corporateform?date=${date}&time=${time}`;
-        }
+    
+        location.href =
+            "https://giftsf.onrender.com/corporateform"
+            + `?date=${date}&time=${time}`;
     },
+
 
     customButtons: {
         reload: {
