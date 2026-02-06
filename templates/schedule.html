@@ -31,6 +31,14 @@ body {
     overflow: hidden;
 }
 
+/* ⭐ チップ横幅を少し細くする（左寄せ） */
+.fc-timegrid-event {
+    width: 85% !important;   /* 好きな割合に変更OK 85〜92%くらいが見やすい */
+    margin-left: 0 !important;
+    margin-right: auto !important;
+}
+
+
 .meeting-scroll { display: flex; flex-direction: column; height: 100%; }
 
 .meeting-header {
@@ -195,10 +203,16 @@ document.getElementById("calendar"),
         const date = `${yyyy}-${mm}-${dd}`;
         const time = `${hh}:${mi}`;
     
+        // ⭐ 確認ダイアログ
+        if (!confirm(`${date} ${time} で商談登録しますか？`)) {
+            return;
+        }
+    
         location.href =
             "https://giftsf.onrender.com/corporateform"
             + `?date=${date}&time=${time}`;
     },
+
 
 
     customButtons: {
