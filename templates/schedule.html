@@ -278,15 +278,14 @@ document.getElementById("calendar"),
         
             const owner = m.extendedProps?.meeting_owner || "";
             const store = m.title || "";
-            const status = m.extendedProps?.status || "";
         
             bodyHtml += `
                 <div>
                     <div style="font-weight:600;">${store}</div>
-                    <div style="font-size:12px;color:#333;">担当：${owner}</div>
-                    <div style="font-size:12px;color:#1976D2;">ステータス：${status}</div>
+                    <div style="font-size:12px;color:#333;">${owner}</div>
                 </div>
             `;
+
 
             }
         });
