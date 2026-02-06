@@ -190,42 +190,35 @@ document.getElementById("calendar"),
     height: "100vh",
 
     // ★追加：ダブルクリック登録
-    let clickTimer = null;
-    
     dateClick: function(info) {
-    
-        // 1回目クリック
+
         if (clickTimer === null) {
-    
             clickTimer = setTimeout(() => {
-                // シングルクリックは何もしない
                 clickTimer = null;
-            }, 300); // ダブルクリック判定時間（ms）
-    
+            }, 300);
             return;
         }
-    
-        // 2回目クリック（ダブルクリック）
+
         clearTimeout(clickTimer);
         clickTimer = null;
-    
+
         const d = new Date(info.date);
-    
+
         const yyyy = d.getFullYear();
         const mm = String(d.getMonth() + 1).padStart(2, '0');
         const dd = String(d.getDate()).padStart(2, '0');
         const hh = String(d.getHours()).padStart(2, '0');
         const mi = String(d.getMinutes()).padStart(2, '0');
-    
+
         const date = `${yyyy}-${mm}-${dd}`;
         const time = `${hh}:${mi}`;
-    
+
         if (!confirm(`${date} ${time} で商談登録しますか？`)) return;
-    
+
         location.href =
             "https://giftsf.onrender.com/corporateform"
             + `?date=${date}&time=${time}`;
-},
+    },
 
 
 
