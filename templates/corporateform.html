@@ -245,6 +245,28 @@ $(document).ready(function () {
         }, 10000);
     });
 });
+
+
+// ==============================
+// URLパラメータから日付時間をセット
+// ==============================
+(function () {
+
+    const params = new URLSearchParams(window.location.search);
+
+    const date = params.get("date");
+    const time = params.get("time");
+
+    if (date) {
+        document.getElementById("Field24__c").value = date;
+    }
+
+    if (time) {
+        document.getElementById("Field25__c").value = time;
+    }
+
+})();
+
 </script>
 
 </body>
