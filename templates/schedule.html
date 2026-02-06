@@ -101,6 +101,8 @@ body {
 <script>
 
 const RAW_EVENTS = {{ events | tojson | safe }};
+let clickTimer = null;
+
 
 // ==========================
 // 同時刻まとめ + 色分け
