@@ -160,7 +160,7 @@ def get_field_descriptions():
         'Field6__c', 'Field9__c', 'Field40__c', 'X2__c', 'Field27__c', 'Field28__c',
         'Field30__c', 'Field31__c', 'Field41__c', 'Field39__c', 'Field35__c', 'Field36__c',
         'Field37__c', 'Field38__c', 'Field12__c', 'Field14__c', 'Field13__c', 'Field15__c', 'KDDI__c', 'KDDI1__c',
-        'NTT__c', 'NTT1__c', 'NTTX__c', 'hikariWEB__c', 'NUROarea__c' 'Field359__c', 'Field184__c', 'Field229__c','Field271__c'
+        'NTT__c', 'NTT1__c', 'NTTX__c', 'hikariWEB__c', 'NUROarea__c', 'Field359__c', 'Field184__c', 'Field229__c','Field271__c'
     ]
     field_defs = {}
     for f in desc['fields']:
