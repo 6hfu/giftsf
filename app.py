@@ -1113,9 +1113,9 @@ def corporateform():
 
     today = datetime.now(JST).date().isoformat()
 
-    apo_default_comment = """LINE登録：未・済
-メールアドレス（LINE未登録の場合）：
-備考（雰囲気や訴求ポイント）：
+    apo_default_comment = """・アウト：
+・訴求ポイント：
+・その他アポ段階で得た情報：
 """
 
     return render_template(
