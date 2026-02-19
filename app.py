@@ -45,8 +45,10 @@ field76_map = {
     "AU光_010（WAF）": "a05TL00000ncTETYA2",
     "NURO光_002（OIM）": "a05IU00001CHHNiYAP",
     "NURO光_003（ワンサービス）": "a05TL00000ljIddYAE",
+    "NURO光_004（ファイバーサービス）": "a05TL000016nAWvYAM",
     "Liyl Wi-Fi（リル）": "a05TL000016ZxinYAC",
     "AU光_008（Tアシスト）": "a05IU00001CHHMwYAP"
+    
 }
 
 BASIC_AUTH_PASSWORD = "gift2025"
