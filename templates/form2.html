@@ -179,12 +179,18 @@
             'Field27__c', 'Field28__c', 'Field30__c', 'Field31__c', 'Field41__c',
             'Field40__c', 'Field6__c', 'ShippingPostalCode', 'Field39__c',
             'Field35__c', 'Field36__c', 'Field37__c', 'Field38__c',
-            'Field9__c', 'Field12__c', 'Field14__c',
-            'NTT__c', 'NTT1__c', 'NTTX__c', 'Field184__c'
+            'Field9__c', 'Field12__c', 'Field14__c', 'Field13__c', 'Field15__c',
+            'KDDI__c', 'KDDI1__c', 'NTT__c', 'NTT1__c', 'NTTX__c', 'hikariWEB__c', 'NUROarea__c', 'Field359__c', 'Field184__c', 'Field229__c'
         ] %}
 
         {% set templates = {
-            "営コメ（旧：受注メモ）": "・現状料金：\n・案内料金：\n・速度ネック：有・無\n・前確希望時間：（理由も記載）\n・営コメ："
+            "営コメ（旧：受注メモ）": "・現状料金：\n・案内料金：\n・速度ネック：有・無\n・前確希望時間：（理由も記載）\n・営コメ：",
+
+            "ナリーズ用": "・性別：\n・年齢層：　代\n・固定電話(SONET)：無・有り（変更OK）\n・案内速度：１G・５G・１０G\n・お客様からの質問＆どう返したか：\n・その他：",
+
+            "Beflex-SONET光": "・性別：男性/女性\n・年齢層：○○歳くらい\n・固定：有（変更可）/無\n・光TV：無\n・在宅：在宅中/外出中/不明\n・反応が良かった箇所：\n・\n・お客様からの質問／こちらの案内とリアクション：\n・\n・不安にしていた箇所／こちらの案内とリアクション：\n・\n・お客様備考：\n・",
+
+            "Beflex-グッピー": "・性別：男性/女性\n・年齢層：○○歳くらい\n・持ち運びでのリアクション（アウト有・無）：\n・アウト有（内容）：\n・\n・アウト無（リアクション）：\n・\n・支払い方法：クレカ／口座（クレカOK）\n・"
 
             
 
@@ -199,7 +205,12 @@
             'Field23__c',
             'Field24__c',
             'Field25__c',
-            'Field9__c'
+            'Field9__c',
+            'Field12__c',
+            'Field14__c',
+            'Field13__c',
+            'Field15__c',
+            'ShippingPostalCode'
         ] %}
 
         
@@ -251,21 +262,18 @@
                 </div>
         
             {% elif api_name == 'Field76__c' %}
+                <!-- select2 部分はそのまま -->
                 <div class="mb-3">
                     <label for="{{ api_name }}" class="form-label" data-api-name="{{ api_name }}">
                         {{ field.label }}
                     </label>
-            
                     <select class="form-select select2" id="{{ api_name }}" name="{{ api_name }}">
                         <option value="">選択してください</option>
-            
-                        <!-- ★ここだけ制御：2つだけ表示 -->
-                        <option value="So-net光_004（WAF）">So-net光_004（WAF）</option>
-                        <option value="good NP_001（ITC）">good NP_001（ITC）</option>
-            
+                        {% for key in field76_map.keys() %}
+                            <option value="{{ key }}">{{ key }}</option>
+                        {% endfor %}
                     </select>
                 </div>
-
         
             {% elif api_name == 'Field22__c' %}
                 <!-- Field22__c の入力制限を一時的にオフ -->
@@ -420,7 +428,12 @@ $(document).ready(function () {
         'Field23__c',
         'Field24__c',
         'Field25__c',
-        'Field9__c'
+        'Field9__c',
+        'Field12__c',
+        'Field14__c',
+        'Field13__c',
+        'Field15__c',
+        'ShippingPostalCode'
     ];
 
     // 「※必須」マーク追加
