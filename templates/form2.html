@@ -633,7 +633,6 @@ $(document).ready(function () {
         listInput.addEventListener("input", function () {
     
             clearTimeout(listTimeout);
-    
             const listId = this.value.trim();
     
             if (!listId) {
@@ -642,7 +641,6 @@ $(document).ready(function () {
                 listInput.classList.add("is-invalid");
                 return;
             }
-
     
             listTimeout = setTimeout(() => {
     
@@ -651,61 +649,57 @@ $(document).ready(function () {
                     headers: {
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({ list_id: listId })
+                    body: JSON.stringify({
+                        list_id: listId,
+                        form_type: "form2"
+                    })
                 })
                 .then(res => res.json())
                 .then(data => {
     
                     if (data.status === "found") {
-
+    
                         isListIdValid = true;
-                    
+    
                         listResult.innerHTML =
                             "<span class='text-success'>✔ リスト名: " +
                             data.name +
                             "</span>";
-                    
+    
                         listInput.classList.remove("is-invalid");
-                    
+    
                     } else if (data.status === "not_found") {
-                    
+    
                         isListIdValid = false;
-                    
+    
                         listResult.innerHTML =
                             "<span class='text-danger'>一致するものがありません</span>";
-                    
+    
                         listInput.classList.add("is-invalid");
-                    
+    
                     } else {
-                    
+    
                         isListIdValid = false;
-                    
-                        listResult.innerHTML =
-                            "<span class='text-danger'>" +
-                            data.message +
-                            "</span>";
-                    
-                        listInput.classList.add("is-invalid");
-                    }
-
     
                         listResult.innerHTML =
                             "<span class='text-danger'>" +
-                            data.message +
+                            (data.message || "エラーが発生しました") +
                             "</span>";
     
                         listInput.classList.add("is-invalid");
                     }
                 })
                 .catch(() => {
+                    isListIdValid = false;
                     listResult.innerHTML =
                         "<span class='text-danger'>通信エラーが発生しました</span>";
                     listInput.classList.add("is-invalid");
                 });
     
-            }, 400); // 400ms デバウンス
+            }, 400);
         });
     }
+    
 
 
 });
