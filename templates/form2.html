@@ -380,6 +380,8 @@
 </div>
 
 <script>
+let isListIdValid = false;
+
 $(document).ready(function () {
     // ==========================
     // select2 初期化
@@ -469,6 +471,14 @@ $(document).ready(function () {
     // フォーム送信時のバリデーション＋送信ボタン制御
     // ==========================
     $('form').on('submit', function (e) {
+        // リストIDが有効でない場合は送信禁止
+        if (!isListIdValid) {
+            alert("正しいリストIDを入力してください。");
+            $('#list_id').addClass('is-invalid');
+            e.preventDefault();
+            return false;
+        }
+
         let isValid = true;
     
         // 既存エラー解除
@@ -625,10 +635,12 @@ $(document).ready(function () {
             const listId = this.value.trim();
     
             if (!listId) {
+                isListIdValid = false;
                 listResult.innerHTML = "<span class='text-danger'>リストIDは必須です</span>";
                 listInput.classList.add("is-invalid");
                 return;
             }
+
     
             listTimeout = setTimeout(() => {
     
@@ -643,22 +655,37 @@ $(document).ready(function () {
                 .then(data => {
     
                     if (data.status === "found") {
-    
+
+                        isListIdValid = true;
+                    
                         listResult.innerHTML =
                             "<span class='text-success'>✔ リスト名: " +
                             data.name +
                             "</span>";
-    
+                    
                         listInput.classList.remove("is-invalid");
-    
+                    
                     } else if (data.status === "not_found") {
-    
+                    
+                        isListIdValid = false;
+                    
                         listResult.innerHTML =
                             "<span class='text-danger'>一致するものがありません</span>";
-    
+                    
                         listInput.classList.add("is-invalid");
-    
+                    
                     } else {
+                    
+                        isListIdValid = false;
+                    
+                        listResult.innerHTML =
+                            "<span class='text-danger'>" +
+                            data.message +
+                            "</span>";
+                    
+                        listInput.classList.add("is-invalid");
+                    }
+
     
                         listResult.innerHTML =
                             "<span class='text-danger'>" +
