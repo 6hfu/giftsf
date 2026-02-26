@@ -167,6 +167,24 @@
 
     <form method="POST" action="/submit">
 
+        <!-- リスト管理（CustomObject14__c） -->
+        <div class="mb-3">
+            <label for="list_id" class="form-label">
+                リストID <small class="text-danger">※必須</small>
+            </label>
+            <input type="text" 
+                   class="form-control" 
+                   id="list_id" 
+                   name="list_id" 
+                   maxlength="8" 
+                   autocomplete="off"
+                   required>
+        
+            <!-- 結果表示エリア -->
+            <div id="list_id_result" class="mt-2"></div>
+        </div>
+
+
         <div class="mb-3 position-relative">
             <label for="Field270__c_name" class="form-label">代電者（必要があれば）</label>
             <input type="text" id="Field270__c_name" class="form-control" placeholder="名前を入力すると候補が表示されます">
@@ -175,7 +193,7 @@
         </div>
         {% set order = [
             'Name', 'X2__c', 'Field76__c', 'Field78__c', 'Field56__c', 'Field228__c', 'Field271__c',
-            'Field22__c', 'Field23__c', 'Field24__c', 'Field25__c', 'Field8__c',
+            Field366__c', 'Field23__c', 'Field24__c', 'Field25__c', 'Field8__c',
             'Field27__c', 'Field28__c', 'Field30__c', 'Field31__c', 'Field41__c',
             'Field40__c', 'Field6__c', 'ShippingPostalCode', 'Field39__c',
             'Field35__c', 'Field36__c', 'Field37__c', 'Field38__c',
@@ -424,7 +442,7 @@ $(document).ready(function () {
         'Field76__c',
         'Field78__c',
         'Field56__c',
-        'Field22__c',
+        'list_id',
         'Field23__c',
         'Field24__c',
         'Field25__c',
@@ -590,6 +608,77 @@ $(document).ready(function () {
             }
         });
     }
+
+    // ==========================
+    // リストID リアルタイムチェック
+    // ==========================
+    const listInput = document.getElementById("list_id");
+    const listResult = document.getElementById("list_id_result");
+    let listTimeout = null;
+    
+    if (listInput && listResult) {
+    
+        listInput.addEventListener("input", function () {
+    
+            clearTimeout(listTimeout);
+    
+            const listId = this.value.trim();
+    
+            if (!listId) {
+                listResult.innerHTML = "<span class='text-danger'>リストIDは必須です</span>";
+                listInput.classList.add("is-invalid");
+                return;
+            }
+    
+            listTimeout = setTimeout(() => {
+    
+                fetch("/check_list_id", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ list_id: listId })
+                })
+                .then(res => res.json())
+                .then(data => {
+    
+                    if (data.status === "found") {
+    
+                        listResult.innerHTML =
+                            "<span class='text-success'>✔ リスト名: " +
+                            data.name +
+                            "</span>";
+    
+                        listInput.classList.remove("is-invalid");
+    
+                    } else if (data.status === "not_found") {
+    
+                        listResult.innerHTML =
+                            "<span class='text-danger'>一致するものがありません</span>";
+    
+                        listInput.classList.add("is-invalid");
+    
+                    } else {
+    
+                        listResult.innerHTML =
+                            "<span class='text-danger'>" +
+                            data.message +
+                            "</span>";
+    
+                        listInput.classList.add("is-invalid");
+                    }
+                })
+                .catch(() => {
+                    listResult.innerHTML =
+                        "<span class='text-danger'>通信エラーが発生しました</span>";
+                    listInput.classList.add("is-invalid");
+                });
+    
+            }, 400); // 400ms デバウンス
+        });
+    }
+
+
 });
 </script>
 
