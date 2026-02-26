@@ -159,7 +159,7 @@ def get_field_descriptions():
         'Field6__c', 'Field9__c', 'Field40__c', 'X2__c', 'Field27__c', 'Field28__c',
         'Field30__c', 'Field31__c', 'Field41__c', 'Field39__c', 'Field35__c', 'Field36__c',
         'Field37__c', 'Field38__c', 'Field12__c', 'Field14__c', 'Field13__c', 'Field15__c', 'KDDI__c', 'KDDI1__c',
-        'NTT__c', 'NTT1__c', 'NTTX__c', 'hikariWEB__c', 'NUROarea__c', 'Field359__c', 'Field184__c', 'Field229__c','Field271__c'
+        'NTT__c', 'NTT1__c', 'NTTX__c', 'hikariWEB__c', 'NUROarea__c', 'Field359__c', 'Field184__c', 'Field229__c','Field271__c','Field366__c'
     ]
     field_defs = {}
     for f in desc['fields']:
@@ -529,14 +529,49 @@ def submit():
         'Field207__c', 'ShippingPostalCode', 'ShippingState', 'ShippingCity', 'ShippingStreet',
         'Field6__c', 'Field9__c', 'Field40__c', 'X2__c', 'Field27__c', 'Field28__c',
         'Field30__c', 'Field31__c', 'Field41__c', 'Field39__c', 'Field35__c', 'Field36__c',
-        'Field37__c', 'Field38__c', 'Field12__c', 'Field14__c', 'Field13__c', 'Field15__c', 'KDDI__c', 'KDDI1__c',
-        'NTT__c', 'NTT1__c', 'NTTX__c', 'hikariWEB__c', 'NUROarea__c', 'Field359__c', 'Field184__c', 'Field229__c','Field271__c','Field270__c'
+        'Field37__c', 'Field38__c', 'Field12__c', 'Field14__c', 'Field13__c', 'Field15__c',
+        'KDDI__c', 'KDDI1__c', 'NTT__c', 'NTT1__c', 'NTTX__c', 'hikariWEB__c',
+        'NUROarea__c', 'Field359__c', 'Field184__c', 'Field229__c',
+        'Field271__c', 'Field270__c','Field366__c'
     ]
 
     form_data = {field: request.form.get(field) for field in import_fields}
     form_data['Field207__c'] = session.get('username', None)
 
-    # 日付フィールドの整形
+    # ==================================================
+    # 🔵 CustomObject14__c（リスト管理）リレーション処理
+    # ==================================================
+    list_id = request.form.get('list_id', '').strip()
+
+    if not list_id:
+        return render_template('result.html', message="リストIDは必須です")
+
+    try:
+        # SOQLインジェクション最低限対策
+        safe_list_id = list_id.replace("'", "\\'")
+
+        soql = f"""
+            SELECT Id
+            FROM CustomObject14__c
+            WHERE Field1__c = '{safe_list_id}'
+            LIMIT 1
+        """
+        list_result = sf.query(soql)
+
+        if list_result['totalSize'] == 0:
+            return render_template('result.html', message="一致するものがありません")
+
+        list_record_id = list_result['records'][0]['Id']
+
+        # ✅ AccountのLookupへセット
+        form_data['Field366__c'] = list_record_id
+
+    except Exception as e:
+        return render_template('result.html', message=f"リスト取得エラー: {str(e)}")
+
+    # ==================================================
+    # 🔵 日付フィールド整形
+    # ==================================================
     for date_field in ['Field24__c', 'Field41__c']:
         val = form_data.get(date_field)
         if val:
@@ -548,7 +583,9 @@ def submit():
         else:
             form_data[date_field] = None
 
-    # 時間フィールドの整形
+    # ==================================================
+    # 🔵 時間フィールド整形
+    # ==================================================
     input_time_str = form_data.get("Field25__c")
     if input_time_str:
         try:
@@ -557,14 +594,20 @@ def submit():
             form_data["Field25__c"] = jst_time.strftime("%H:%M:%S")
         except Exception:
             form_data["Field25__c"] = None
+    else:
+        form_data["Field25__c"] = None
 
-    # Field76__c のマッピング
+    # ==================================================
+    # 🔵 Field76__c マッピング
+    # ==================================================
     if form_data.get('Field76__c') in field76_map:
         form_data['Field76__c'] = field76_map[form_data['Field76__c']]
     else:
         form_data['Field76__c'] = None
 
-    # 郵便番号から住所を自動取得して Salesforce に送信（入力されている場合は上書きしない）
+    # ==================================================
+    # 🔵 郵便番号から住所自動取得
+    # ==================================================
     postal_code_input = form_data.get('ShippingPostalCode', '')
     if postal_code_input:
         postal_code, state, city, street = get_address_from_postalcode(postal_code_input)
@@ -573,6 +616,9 @@ def submit():
         form_data['ShippingCity'] = city
         form_data['ShippingStreet'] = street
 
+    # ==================================================
+    # 🔵 Account作成
+    # ==================================================
     try:
         result = sf.Account.create(form_data)
         message = f"レコード作成成功。ID: {result['id']}"
@@ -580,6 +626,42 @@ def submit():
         message = f"エラー発生: {str(e)}"
 
     return render_template('result.html', message=message)
+
+
+@app.route('/check_list_id', methods=['POST'])
+@login_required
+def check_list_id():
+
+    list_id = request.json.get('list_id', '').strip()
+
+    if not list_id:
+        return {"status": "error", "message": "リストIDは必須です"}
+
+    try:
+        safe_list_id = list_id.replace("'", "\\'")
+
+        soql = f"""
+            SELECT Id, Name
+            FROM CustomObject14__c
+            WHERE Field1__c = '{safe_list_id}'
+            LIMIT 1
+        """
+        result = sf.query(soql)
+
+        if result['totalSize'] == 0:
+            return {"status": "not_found"}
+
+        record = result['records'][0]
+
+        return {
+            "status": "found",
+            "id": record['Id'],
+            "name": record['Name']
+        }
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 
 @app.route('/search/customobject10')
 @login_required
