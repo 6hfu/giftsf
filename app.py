@@ -632,12 +632,41 @@ def submit():
 @login_required
 def check_list_id():
 
-    list_id = request.json.get('list_id', '').strip()
+    # ================================
+    # 🔵 JSON安全取得
+    # ================================
+    data = request.get_json(silent=True)
 
+    if not data:
+        return jsonify({
+            "status": "error",
+            "message": "不正なリクエストです"
+        }), 400
+
+    form_type = data.get("form_type")
+    list_id = data.get("list_id", "").strip()
+
+    # ================================
+    # 🔵 form2 以外はチェック不要
+    # ================================
+    if form_type != "form2":
+        return jsonify({
+            "status": "skip"
+        }), 200
+
+    # ================================
+    # 🔵 必須チェック
+    # ================================
     if not list_id:
-        return {"status": "error", "message": "リストIDは必須です"}
+        return jsonify({
+            "status": "error",
+            "message": "リストIDは必須です"
+        }), 400
 
     try:
+        # ================================
+        # 🔵 SOQL簡易エスケープ
+        # ================================
         safe_list_id = list_id.replace("'", "\\'")
 
         soql = f"""
@@ -646,21 +675,35 @@ def check_list_id():
             WHERE Field1__c = '{safe_list_id}'
             LIMIT 1
         """
+
         result = sf.query(soql)
 
-        if result['totalSize'] == 0:
-            return {"status": "not_found"}
+        # ================================
+        # 🔵 未存在
+        # ================================
+        if result["totalSize"] == 0:
+            return jsonify({
+                "status": "not_found"
+            }), 200
 
-        record = result['records'][0]
+        # ================================
+        # 🔵 存在OK
+        # ================================
+        record = result["records"][0]
 
-        return {
+        return jsonify({
             "status": "found",
-            "id": record['Id'],
-            "name": record['Name']
-        }
+            "id": record["Id"],
+            "name": record["Name"]
+        }), 200
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        logging.exception("List ID check error")
+
+        return jsonify({
+            "status": "error",
+            "message": "リスト確認中にエラーが発生しました"
+        }), 500
 
 
 @app.route('/search/customobject10')
@@ -1068,8 +1111,8 @@ def search_user():
         return jsonify([])
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+
+
 
 
 from datetime import datetime, timedelta, timezone
