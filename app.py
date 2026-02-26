@@ -523,6 +523,9 @@ def form5():
 @app.route('/submit', methods=['POST'])
 @login_required
 def submit():
+
+    form_type = request.form.get("form_type")  # ← 追加
+
     import_fields = [
         'Field206__c', 'Name', 'Field78__c', 'Field56__c', 'Field228__c', 'Field22__c',
         'Field23__c', 'Field24__c', 'Field25__c', 'Field76__c', 'Field8__c',
@@ -539,35 +542,35 @@ def submit():
     form_data['Field207__c'] = session.get('username', None)
 
     # ==================================================
-    # 🔵 CustomObject14__c（リスト管理）リレーション処理
+    # 🔵 form2 のときだけ リストIDチェック
     # ==================================================
-    list_id = request.form.get('list_id', '').strip()
+    if form_type == "form2":
 
-    if not list_id:
-        return render_template('result.html', message="リストIDは必須です")
+        list_id = request.form.get('list_id', '').strip()
 
-    try:
-        # SOQLインジェクション最低限対策
-        safe_list_id = list_id.replace("'", "\\'")
+        if not list_id:
+            return render_template('result.html', message="リストIDは必須です")
 
-        soql = f"""
-            SELECT Id
-            FROM CustomObject14__c
-            WHERE Field1__c = '{safe_list_id}'
-            LIMIT 1
-        """
-        list_result = sf.query(soql)
+        try:
+            safe_list_id = list_id.replace("'", "\\'")
 
-        if list_result['totalSize'] == 0:
-            return render_template('result.html', message="一致するものがありません")
+            soql = f"""
+                SELECT Id
+                FROM CustomObject14__c
+                WHERE Field1__c = '{safe_list_id}'
+                LIMIT 1
+            """
 
-        list_record_id = list_result['records'][0]['Id']
+            list_result = sf.query(soql)
 
-        # ✅ AccountのLookupへセット
-        form_data['Field366__c'] = list_record_id
+            if list_result['totalSize'] == 0:
+                return render_template('result.html', message="一致するものがありません")
 
-    except Exception as e:
-        return render_template('result.html', message=f"リスト取得エラー: {str(e)}")
+            list_record_id = list_result['records'][0]['Id']
+            form_data['Field366__c'] = list_record_id
+
+        except Exception as e:
+            return render_template('result.html', message=f"リスト取得エラー: {str(e)}")
 
     # ==================================================
     # 🔵 日付フィールド整形
