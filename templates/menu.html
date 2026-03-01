@@ -54,7 +54,6 @@
             background-color: #e9ecef;
             color: #004085;
         }
-        /* ログアウト風ボタンのリンク */
         .btn-logout {
             display: inline-block;
             width: 100%;
@@ -75,31 +74,61 @@
 <body>
     <div class="menu-card shadow-sm">
         <h2>メニュー</h2>
-        <p class="welcome-text">ようこそ、<strong>{{ username }}</strong> さん</p>
-        <p>所属部署: {{ department }}</p>
 
-        
-        <!-- 受注登録ボタンまたは法人部署ボタン切り替え -->
+        <p class="welcome-text">
+            ようこそ、<strong>{{ username }}</strong> さん
+        </p>
+
+        <p>所属部署: {{ department }}</p>
+        <p>会社名: {{ company_name }}</p>
+
+        <!-- ========================= -->
+        <!-- メインボタン分岐ロジック -->
+        <!-- ========================= -->
+
         {% if department == "法人部署" %}
-            <a href="{{ url_for('schedule') }}" class="btn btn-primary mb-3">商談カレンダー</a>
-            <a href="{{ url_for('corporateform') }}" class="btn btn-primary mb-3">商談登録</a>
+
+            <!-- 法人部署の場合 -->
+            <a href="{{ url_for('schedule') }}" class="btn btn-primary mb-3">
+                商談カレンダー
+            </a>
+
+            <a href="{{ url_for('corporateform') }}" class="btn btn-primary mb-3">
+                商談登録
+            </a>
+
         {% else %}
-            {% if company_name == "テスト会社" %}
-                <a href="{{ url_for('form2') }}" class="btn btn-primary mb-3">受注登録</a>
+
+            {% if company_name == "株式会社GIFT" %}
+                <!-- GIFT かつ 法人部署以外 -->
+                <a href="{{ url_for('form2') }}" class="btn btn-primary mb-3">
+                    受注登録
+                </a>
             {% else %}
-                <a href="{{ url_for('form') }}" class="btn btn-primary mb-3">受注登録</a>
+                <!-- その他 -->
+                <a href="{{ url_for('form') }}" class="btn btn-primary mb-3">
+                    受注登録
+                </a>
             {% endif %}
+
         {% endif %}
 
+        <!-- ========================= -->
+        <!-- 共通ボタン -->
+        <!-- ========================= -->
 
+        <a href="{{ url_for('records') }}" class="btn btn-outline-primary mb-3">
+            登録済みレコード一覧
+        </a>
 
-        <!-- 登録済みレコード一覧ボタン -->
-        <a href="{{ url_for('records') }}" class="btn btn-outline-primary mb-3">登録済みレコード一覧</a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary mb-3">
+            個人獲得実績
+        </a>
 
-        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary mb-3">個人獲得実績</a>
+        <a href="{{ url_for('logout') }}" class="btn-logout">
+            ログアウト
+        </a>
 
-        <!-- ログアウトはGETリンクに変更 -->
-        <a href="{{ url_for('logout') }}" class="btn-logout">ログアウト</a>
     </div>
 </body>
 </html>
