@@ -345,7 +345,7 @@ def aggregate_calls(records):
 def call_dashboard():
     records = sf.query("""
         SELECT Field24__c, Field25__c, Field352__c
-        FROM CustomObject__c
+        FROM Account
         WHERE Field24__c = TODAY OR Field24__c = TOMORROW
     """)["records"]
 
