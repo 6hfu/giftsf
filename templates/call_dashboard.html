@@ -1,77 +1,164 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>コール状況</title>
+<title>コールセグメント一覧</title>
 
 <script>
-// 5分ごとに自動更新
-setTimeout(function(){
-    location.reload();
-}, 300000); // 300,000ms = 5分
+// 5分自動更新
+setTimeout(() => location.reload(), 300000);
+
+// 現在時間取得
+function getCurrentHour(){
+    const now = new Date();
+    return now.getHours();
+}
 </script>
 
 <style>
-table {
-    border-collapse: collapse;
+body {
+    font-family: "Segoe UI", sans-serif;
+    background: #f4f6f9;
+    margin: 20px;
+}
+
+h2 {
+    margin-bottom: 5px;
+}
+
+.day-card {
+    background: white;
+    padding: 20px;
     margin-bottom: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
-th, td {
-    border: 1px solid #ccc;
-    padding: 6px 10px;
-    text-align: center;
-}
-.total-box {
+
+.total {
     font-size: 18px;
     font-weight: bold;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
 }
+
+.hour-block {
+    margin-bottom: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.hour-header {
+    background: #e9edf3;
+    padding: 10px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.hour-header.active {
+    background: #d6e4ff;
+}
+
+.hour-content {
+    display: none;
+    background: #fafbfc;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 8px;
+    text-align: center;
+}
+
+th {
+    background: #f0f2f5;
+}
+
+td:first-child {
+    text-align: left;
+    padding-left: 15px;
+}
+
+.new {
+    color: #1677ff;
+    font-weight: bold;
+}
+
+.absent {
+    color: #ff4d4f;
+    font-weight: bold;
+}
+
+.zero {
+    color: #bbb;
+}
+
 </style>
 </head>
 <body>
 
-<h2>本日</h2>
-<div class="total-box">
-合計：{{ today["total"] }}件
+{% macro render_day(day, label) %}
+<div class="day-card">
+    <h2>{{ label }}</h2>
+    <div class="total">合計：{{ day["total"] }}件</div>
+
+    {% for h in range(0,20) %}
+    {% set hour_data = day["hours"].get(h, {}) %}
+
+    <div class="hour-block">
+        <div class="hour-header" onclick="toggleHour(this)">
+            {{ h }}:00〜{{ h }}:59
+        </div>
+
+        <div class="hour-content">
+            <table>
+                <tr>
+                    <th>対応ステータス</th>
+                    <th>新規</th>
+                    <th>留守</th>
+                </tr>
+
+                {% for status in ["折返し希望（新設FC）","折返し希望（BY）","折返し希望（CS）"] %}
+                {% set new = hour_data.get(status, {}).get("新規", 0) %}
+                {% set absent = hour_data.get(status, {}).get("留守", 0) %}
+                <tr>
+                    <td>{{ status }}</td>
+                    <td class="{{ 'new' if new > 0 else 'zero' }}">{{ new }}件</td>
+                    <td class="{{ 'absent' if absent > 0 else 'zero' }}">{{ absent }}件</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    {% endfor %}
 </div>
+{% endmacro %}
 
-<table>
-<tr>
-<th>時間帯</th>
-<th>新規</th>
-<th>留守</th>
-</tr>
+{{ render_day(today, "本日") }}
+{{ render_day(tomorrow, "翌日") }}
 
-{% for h in range(0,20) %}
-<tr>
-<td>{{ h }}:00〜{{ h }}:59</td>
-<td>{{ today["hours"][h]["新規"] if h in today["hours"] else 0 }}</td>
-<td>{{ today["hours"][h]["留守"] if h in today["hours"] else 0 }}</td>
-</tr>
-{% endfor %}
-</table>
+<script>
+function toggleHour(element){
+    const content = element.nextElementSibling;
+    content.style.display = content.style.display === "block" ? "none" : "block";
+}
 
+// 現在時間帯をハイライト
+window.onload = function(){
+    const currentHour = getCurrentHour();
+    const headers = document.querySelectorAll(".hour-header");
 
-<h2>翌日</h2>
-<div class="total-box">
-合計：{{ tomorrow["total"] }}件
-</div>
-
-<table>
-<tr>
-<th>時間帯</th>
-<th>新規</th>
-<th>留守</th>
-</tr>
-
-{% for h in range(0,20) %}
-<tr>
-<td>{{ h }}:00〜{{ h }}:59</td>
-<td>{{ tomorrow["hours"][h]["新規"] if h in tomorrow["hours"] else 0 }}</td>
-<td>{{ tomorrow["hours"][h]["留守"] if h in tomorrow["hours"] else 0 }}</td>
-</tr>
-{% endfor %}
-</table>
+    headers.forEach(header => {
+        if(header.innerText.startsWith(currentHour + ":")){
+            header.classList.add("active");
+            header.nextElementSibling.style.display = "block";
+        }
+    });
+};
+</script>
 
 </body>
 </html>
