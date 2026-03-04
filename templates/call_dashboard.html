@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>コール状況</title>
+<title>コール状況一覧</title>
 
 <script>
 setTimeout(function(){
@@ -19,6 +19,7 @@ body {
 
 h2 {
     margin-top: 30px;
+    margin-bottom: 5px;
 }
 
 .total {
@@ -26,21 +27,28 @@ h2 {
     margin-bottom: 10px;
 }
 
-.table-wrapper {
-    overflow-x: auto;
+.hour-block {
+    background: white;
+    margin-bottom: 8px;
+    padding: 8px;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.hour-title {
+    font-weight: bold;
+    margin-bottom: 4px;
 }
 
 table {
-    border-collapse: collapse;
     width: 100%;
-    background: white;
+    border-collapse: collapse;
+    font-size: 13px;
 }
 
 th, td {
-    border: 1px solid #ddd;
-    padding: 6px;
+    padding: 4px;
     text-align: center;
-    font-size: 13px;
 }
 
 th {
@@ -49,10 +57,8 @@ th {
 
 .status-name {
     text-align: left;
-    padding-left: 10px;
-    width: 180px;
-    background: #fafafa;
-    font-weight: bold;
+    padding-left: 8px;
+    width: 40%;
 }
 
 .new {
@@ -79,34 +85,50 @@ th {
 合計：{{ today.get("total", 0) }}件
 </div>
 
-<div class="table-wrapper">
+{% for h in range(10,20) %}
+<div class="hour-block">
+
+<div class="hour-title">
+{{ h }}:00〜{{ h }}:59
+</div>
+
 <table>
 <tr>
 <th>対応ステータス</th>
-{% for h in range(10,20) %}
-<th>{{ h }}時</th>
-{% endfor %}
+<th>新規</th>
+<th>留守</th>
 </tr>
 
 {% for status in ["折返し希望（新設FC）","折返し希望（BY）","折返し希望（CS）"] %}
 <tr>
 <td class="status-name">{{ status }}</td>
 
-{% for h in range(10,20) %}
-{% set new = today.get('hours', {}).get(h, {}).get(status, {}).get('新規', 0) %}
-{% set absent = today.get('hours', {}).get(h, {}).get(status, {}).get('留守', 0) %}
-
-<td>
-<span class="{{ 'new' if new > 0 else 'zero' }}">新{{ new }}</span>
- /
-<span class="{{ 'absent' if absent > 0 else 'zero' }}">留{{ absent }}</span>
+<td class="
+{% if today.get('hours', {}).get(h, {}).get(status, {}).get('新規', 0) > 0 %}
+new
+{% else %}
+zero
+{% endif %}
+">
+{{ today.get('hours', {}).get(h, {}).get(status, {}).get('新規', 0) }}件
 </td>
-{% endfor %}
+
+<td class="
+{% if today.get('hours', {}).get(h, {}).get(status, {}).get('留守', 0) > 0 %}
+absent
+{% else %}
+zero
+{% endif %}
+">
+{{ today.get('hours', {}).get(h, {}).get(status, {}).get('留守', 0) }}件
+</td>
 
 </tr>
 {% endfor %}
+
 </table>
 </div>
+{% endfor %}
 
 
 <!-- ================= 翌日 ================= -->
@@ -116,34 +138,50 @@ th {
 合計：{{ tomorrow.get("total", 0) }}件
 </div>
 
-<div class="table-wrapper">
+{% for h in range(10,20) %}
+<div class="hour-block">
+
+<div class="hour-title">
+{{ h }}:00〜{{ h }}:59
+</div>
+
 <table>
 <tr>
 <th>対応ステータス</th>
-{% for h in range(10,20) %}
-<th>{{ h }}時</th>
-{% endfor %}
+<th>新規</th>
+<th>留守</th>
 </tr>
 
 {% for status in ["折返し希望（新設FC）","折返し希望（BY）","折返し希望（CS）"] %}
 <tr>
 <td class="status-name">{{ status }}</td>
 
-{% for h in range(10,20) %}
-{% set new = tomorrow.get('hours', {}).get(h, {}).get(status, {}).get('新規', 0) %}
-{% set absent = tomorrow.get('hours', {}).get(h, {}).get(status, {}).get('留守', 0) %}
-
-<td>
-<span class="{{ 'new' if new > 0 else 'zero' }}">新{{ new }}</span>
- /
-<span class="{{ 'absent' if absent > 0 else 'zero' }}">留{{ absent }}</span>
+<td class="
+{% if tomorrow.get('hours', {}).get(h, {}).get(status, {}).get('新規', 0) > 0 %}
+new
+{% else %}
+zero
+{% endif %}
+">
+{{ tomorrow.get('hours', {}).get(h, {}).get(status, {}).get('新規', 0) }}件
 </td>
-{% endfor %}
+
+<td class="
+{% if tomorrow.get('hours', {}).get(h, {}).get(status, {}).get('留守', 0) > 0 %}
+absent
+{% else %}
+zero
+{% endif %}
+">
+{{ tomorrow.get('hours', {}).get(h, {}).get(status, {}).get('留守', 0) }}件
+</td>
 
 </tr>
 {% endfor %}
+
 </table>
 </div>
+{% endfor %}
 
 </body>
 </html>
