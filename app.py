@@ -11,7 +11,8 @@ import re
 import json
 import pandas as pd
 import base64
-
+from collections import defaultdict
+import pytz
 
 
 
@@ -293,6 +294,68 @@ def create_zoom_meeting(topic, start_datetime_utc, duration_minutes=60):
     return resp.json()
 
 
+
+
+
+# 後確、対応表用
+JST = pytz.timezone("Asia/Tokyo")
+
+def aggregate_calls(records):
+    today = datetime.now(JST).date()
+    tomorrow = today + timedelta(days=1)
+
+    data = {
+        "today": {
+            "hours": defaultdict(lambda: {"新規": 0, "留守": 0}),
+            "total": 0
+        },
+        "tomorrow": {
+            "hours": defaultdict(lambda: {"新規": 0, "留守": 0}),
+            "total": 0
+        }
+    }
+
+    for r in records:
+        call_date = r.get("Field24__c")
+        call_time = r.get("Field25__c")
+        result = r.get("Field352__c")
+
+        if not call_date or not call_time:
+            continue
+
+        call_date = datetime.strptime(call_date, "%Y-%m-%d").date()
+        hour = int(call_time.split(":")[0])
+
+        if hour < 0 or hour > 19:
+            continue
+
+        category = "留守" if result == "留守" else "新規"
+
+        if call_date == today:
+            data["today"]["hours"][hour][category] += 1
+            data["today"]["total"] += 1
+
+        elif call_date == tomorrow:
+            data["tomorrow"]["hours"][hour][category] += 1
+            data["tomorrow"]["total"] += 1
+
+    return data
+
+@app.route("/call_dashboard")
+def call_dashboard():
+    records = sf.query("""
+        SELECT Field24__c, Field25__c, Field352__c
+        FROM CustomObject__c
+        WHERE Field24__c = TODAY OR Field24__c = TOMORROW
+    """)["records"]
+
+    data = aggregate_calls(records)
+
+    return render_template(
+        "call_dashboard.html",
+        today=data["today"],
+        tomorrow=data["tomorrow"]
+    )
 
 
 
