@@ -1234,7 +1234,7 @@ def schedule():
 
 
 
-
+ENABLE_ZOOM = False
 @app.route('/corporateform')
 @login_required
 def corporateform():
@@ -1324,22 +1324,22 @@ def corporateform_submit():
         account_id = result["id"]
 
         # Zoom 作成
-        if call_date and call_time:
-
+        if ENABLE_ZOOM and call_date and call_time:
+        
             utc_dt = jst_dt - timedelta(hours=9)
-
+        
             meeting = create_zoom_meeting(
                 topic="【オンライン取材】店舗の魅力をお聞かせください",
                 start_datetime_utc=utc_dt
             )
-
+        
             zoom_invite = (
                 "【オンライン取材】店舗の魅力をお聞かせください\n"
                 f"日時：{jst_dt.strftime('%Y/%m/%d %H:%M')}\n"
                 f"参加URL：{meeting['join_url']}\n"
                 f"ミーティングID：{meeting['id']}"
             )
-
+        
             sf.Account.update(account_id, {
                 "Field351__c": zoom_invite
             })
