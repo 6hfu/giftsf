@@ -13,7 +13,7 @@ import pandas as pd
 import base64
 from collections import defaultdict
 import pytz
-
+from urllib.parse import urlparse, parse_qs, unquote
 
 
 
@@ -59,7 +59,25 @@ ZOOM_CLIENT_SECRET = os.getenv("ZOOM_CLIENT_SECRET")
 def clean_url(url):
     if not url:
         return url
-    return url.split('?')[0]
+
+    # ① デコード（まず短くする）
+    decoded = unquote(url)
+
+    # ② 255以内ならそのまま
+    if len(decoded) <= 255:
+        return decoded
+
+    # ③ まだ長い場合 → Google検索なら qだけ抽出
+    parsed = urlparse(url)
+
+    if "google.com" in parsed.netloc:
+        query = parse_qs(parsed.query)
+        if 'q' in query:
+            keyword = unquote(query['q'][0])
+            return keyword[:255]
+
+    # ④ その他URL → ?以降削除
+    return url.split('?')[0][:255]
 
 
 
