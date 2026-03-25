@@ -55,6 +55,15 @@ ZOOM_ACCOUNT_ID = os.getenv("ZOOM_ACCOUNT_ID")
 ZOOM_CLIENT_ID = os.getenv("ZOOM_CLIENT_ID")
 ZOOM_CLIENT_SECRET = os.getenv("ZOOM_CLIENT_SECRET")
 
+
+def clean_url(url):
+    if not url:
+        return url
+    return url.split('?')[0]
+
+
+
+
 # セッション有効期限確認・更新
 @app.before_request
 def check_session_timeout():
@@ -1276,7 +1285,7 @@ def corporateform_submit():
     # ▼ 既存追加項目
     apo_status = request.form.get('Field353__c')
     list_name = request.form.get('Field22__c')
-    store_url = request.form.get('Field313__c')
+    store_url = clean_url(request.form.get('Field313__c'))
     sales_comment = request.form.get('Field8__c')
 
     call_date = request.form.get('Field24__c')
