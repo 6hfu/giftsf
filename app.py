@@ -33,13 +33,27 @@ app.config.update(
 SESSION_TIMEOUT_HOURS = 4
 JST = timezone(timedelta(hours=9))  # 日本時間
 
-# Salesforce接続
-sf = Salesforce(
-    username=os.getenv("SF_USERNAME"),
-    password=os.getenv("SF_PASSWORD"),
-    security_token=os.getenv("SF_SECURITY_TOKEN"),
-    domain="login"
-)
+# Salesforce接続 — 遅延初期化
+# モジュールimport時に接続すると SF 障害で gunicorn 起動失敗 → Render クラッシュループ。
+# 初回 .query() 等アクセス時に初期化する LazyProxy にする事で、
+# 起動は常に成功 / 最初の SF 呼び出しで接続。SF 一時障害なら 500 を返すが
+# サービス自体は生存 → 復旧時は自動で次の呼び出しから復活。
+class _SalesforceLazy:
+    _inst = None
+    def _connect(self):
+        _SalesforceLazy._inst = Salesforce(
+            username=os.getenv("SF_USERNAME"),
+            password=os.getenv("SF_PASSWORD"),
+            security_token=os.getenv("SF_SECURITY_TOKEN"),
+            domain="login",
+        )
+        return _SalesforceLazy._inst
+    def __getattr__(self, name):
+        if _SalesforceLazy._inst is None:
+            self._connect()
+        return getattr(_SalesforceLazy._inst, name)
+
+sf = _SalesforceLazy()
 
 field76_map = {
     "So-net光_004（WAF）": "a05TL00000YGL4vYAH",
@@ -1257,6 +1271,7 @@ def corporateform():
     apo_default_comment = """・アウト：
 ・訴求ポイント：
 ・その他アポ段階で得た情報：
+・前確架電先：店舗へ・携帯へ
 """
 
     return render_template(
