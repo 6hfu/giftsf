@@ -12,7 +12,7 @@ import json
 import pandas as pd
 import base64
 from collections import defaultdict
-import pytz
+from urllib.parse import urlparse, parse_qs, unquote, urlunparse
 
 
 
@@ -71,9 +71,68 @@ ZOOM_CLIENT_SECRET = os.getenv("ZOOM_CLIENT_SECRET")
 
 
 def clean_url(url):
-    if not url:
+    """URL を Salesforce Field313__c (Text 255) に収まる形で返す。
+
+    優先順位:
+      ① None / 非文字列 → None or str変換
+      ② 空文字 → そのまま
+      ③ URL-decode 後が255以内 → decode済をそのまま返す (パラメータ保持)
+      ④ Google検索URLなら q= キーワード抽出
+      ⑤ クエリを切り捨ててスキーム+ホスト+パスのみ
+      ⑥ それでも超過 → 末尾切り捨て
+
+    注意: sf = Salesforce() はLazyProxy化済のため、この関数単体では
+    Render クラッシュループ (d1e3baa) を再発させない。
+    """
+    MAX_LEN = 255
+
+    # ① 型・Noneガード
+    if url is None:
+        return None
+    if not isinstance(url, str):
+        try:
+            url = str(url)
+        except Exception:
+            return None
+    if url.strip() == "":
         return url
-    return url.split('?')[0]
+
+    # ② URL-decode (冪等、二重decode安全)
+    try:
+        decoded = unquote(url, errors="replace")
+    except Exception:
+        decoded = url
+
+    # ③ ベストケース: decode後255以内
+    if len(decoded) <= MAX_LEN:
+        return decoded
+
+    # ④ parse試行
+    try:
+        parsed = urlparse(decoded)
+    except Exception:
+        return decoded[:MAX_LEN]
+
+    # ⑤ Google検索URL: q=キーワードのみ
+    if "google.com" in (parsed.netloc or "").lower():
+        try:
+            qs = parse_qs(parsed.query, keep_blank_values=False)
+            if "q" in qs and qs["q"]:
+                keyword = qs["q"][0]
+                return keyword[:MAX_LEN] if len(keyword) > MAX_LEN else keyword
+        except Exception:
+            pass
+
+    # ⑥ 最終手段: クエリ切り捨て → 強制truncate
+    try:
+        no_query = urlunparse((
+            parsed.scheme, parsed.netloc, parsed.path, "", "", "",
+        ))
+        if len(no_query) <= MAX_LEN:
+            return no_query
+        return no_query[:MAX_LEN]
+    except Exception:
+        return decoded[:MAX_LEN]
 
 
 
