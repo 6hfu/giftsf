@@ -135,6 +135,84 @@ def clean_url(url):
         return decoded[:MAX_LEN]
 
 
+#
+# 商材マスタ (CustomObject1__c) から「取次区分=取次中」の商材を動的取得
+# field76_map のハードコードは フォールバック として残す
+#
+import threading as _threading
+import time as _time
+_product_map_lock = _threading.Lock()
+_product_map_cache = {"data": None, "fetched_at": 0.0}
+_PRODUCT_CACHE_TTL = 300  # 5分
+
+
+def get_product_map(force_refresh=False):
+    """CustomObject1__c (商材管理) から Field4__c='取次中' の商材を {Name: Id} で返す。
+    5分キャッシュ。SF 障害時はハードコード field76_map にフォールバック。
+    """
+    now = _time.time()
+    if not force_refresh:
+        with _product_map_lock:
+            cached = _product_map_cache["data"]
+            age = now - _product_map_cache["fetched_at"]
+            if cached is not None and age < _PRODUCT_CACHE_TTL:
+                return cached
+    try:
+        soql = (
+            "SELECT Id, Name, Field2__c FROM CustomObject1__c "
+            "WHERE Field4__c = '取次中' "
+            "ORDER BY Name"
+        )
+        result = sf.query(soql)
+        product_map = {}
+        for r in result.get('records', []):
+            name = r.get('Name')
+            if not name:
+                continue
+            flow = (r.get('Field2__c') or '').strip()
+            # 商流ありなら "Name（商流）" で表示、空なら Name のみ
+            display_key = f"{name}（{flow}）" if flow else name
+            product_map[display_key] = r['Id']
+        if not product_map:
+            # 空なら取得失敗扱いでハードコードに退避（全員0件にならないように）
+            return field76_map
+        with _product_map_lock:
+            _product_map_cache["data"] = product_map
+            _product_map_cache["fetched_at"] = now
+        return product_map
+    except Exception as e:
+        print(f"[WARN] get_product_map failed, fallback to hardcoded field76_map: {e}")
+        return field76_map
+
+
+def filter_field76_map_for_user(allowed_str):
+    """獲得者の「取次可能商材」(Field41__c, 複数選択リスト) でフィルタ。
+
+    - allowed_str が空 → 制限なしで全商材 (get_product_map()) を返す
+    - allowed_str = "A;B;C" → マッチするものだけ返す
+
+    マッチ判定はゆるく:
+      - 完全一致 OR
+      - 全角/半角カッコ「（」「(」より前の部分が一致
+    例: SFに "NURO光_004" と登録、商材マスタ Name が "NURO光_004（ファイバーサービス）" でもヒット
+    """
+    product_map = get_product_map()
+    allowed = (allowed_str or '').strip()
+    if not allowed:
+        return product_map
+
+    def _prefix(s):
+        s = s or ''
+        for sep in ('（', '('):
+            if sep in s:
+                return s.split(sep, 1)[0].strip()
+        return s.strip()
+
+    allowed_prefixes = {_prefix(x) for x in allowed.split(';') if x.strip()}
+    return {
+        k: v for k, v in product_map.items()
+        if k in allowed_prefixes or _prefix(k) in allowed_prefixes
+    }
 
 
 # セッション有効期限確認・更新
@@ -399,7 +477,7 @@ def form():
     
     try:
         # Salesforceからユーザー名と部署名を取得
-        soql = f"SELECT Name, Field13__c FROM CustomObject10__c WHERE Field11__c = '{login_id}' LIMIT 1"
+        soql = f"SELECT Name, Field13__c, Field41__c FROM CustomObject10__c WHERE Field11__c = '{login_id}' LIMIT 1"
         result = sf.query(soql)
         if result['totalSize'] == 0:
             flash("ユーザー情報が見つかりませんでした")
@@ -407,6 +485,8 @@ def form():
         record = result['records'][0]
         display_name = record.get('Name', '')
         department = record.get('Field13__c', '')
+        # 取次可能商材でフィルタ (空欄は全商材表示 = 現行動作)
+        user_field76_map = filter_field76_map_for_user(record.get('Field41__c'))
 
         # 既存の処理
         fields = get_field_descriptions()
@@ -419,7 +499,7 @@ def form():
         return render_template('form.html',
                                fields=fields,
                                import_fields=list(fields.keys()),
-                               field76_map=field76_map,
+                               field76_map=user_field76_map,
                                basic_auth_user_id=login_id,
                                today=today,
                                postal_code=postal_code,
@@ -443,7 +523,7 @@ def form2():
     
     try:
         # Salesforceからユーザー名と部署名を取得
-        soql = f"SELECT Name, Field13__c FROM CustomObject10__c WHERE Field11__c = '{login_id}' LIMIT 1"
+        soql = f"SELECT Name, Field13__c, Field41__c FROM CustomObject10__c WHERE Field11__c = '{login_id}' LIMIT 1"
         result = sf.query(soql)
         if result['totalSize'] == 0:
             flash("ユーザー情報が見つかりませんでした")
@@ -451,6 +531,8 @@ def form2():
         record = result['records'][0]
         display_name = record.get('Name', '')
         department = record.get('Field13__c', '')
+        # 取次可能商材でフィルタ (空欄は全商材表示 = 現行動作)
+        user_field76_map = filter_field76_map_for_user(record.get('Field41__c'))
 
         # 既存の処理
         fields = get_field_descriptions()
@@ -463,7 +545,7 @@ def form2():
         return render_template('form2.html',
                                fields=fields,
                                import_fields=list(fields.keys()),
-                               field76_map=field76_map,
+                               field76_map=user_field76_map,
                                basic_auth_user_id=login_id,
                                today=today,
                                postal_code=postal_code,
@@ -486,7 +568,7 @@ def form3():
     
     try:
         # Salesforceからユーザー名と部署名を取得
-        soql = f"SELECT Name, Field13__c FROM CustomObject10__c WHERE Field11__c = '{login_id}' LIMIT 1"
+        soql = f"SELECT Name, Field13__c, Field41__c FROM CustomObject10__c WHERE Field11__c = '{login_id}' LIMIT 1"
         result = sf.query(soql)
         if result['totalSize'] == 0:
             flash("ユーザー情報が見つかりませんでした")
@@ -494,6 +576,8 @@ def form3():
         record = result['records'][0]
         display_name = record.get('Name', '')
         department = record.get('Field13__c', '')
+        # 取次可能商材でフィルタ (空欄は全商材表示 = 現行動作)
+        user_field76_map = filter_field76_map_for_user(record.get('Field41__c'))
 
         # 既存の処理
         fields = get_field_descriptions()
@@ -506,7 +590,7 @@ def form3():
         return render_template('form3.html',
                                fields=fields,
                                import_fields=list(fields.keys()),
-                               field76_map=field76_map,
+                               field76_map=user_field76_map,
                                basic_auth_user_id=login_id,
                                today=today,
                                postal_code=postal_code,
@@ -530,7 +614,7 @@ def form4():
     
     try:
         # Salesforceからユーザー名と部署名を取得
-        soql = f"SELECT Name, Field13__c FROM CustomObject10__c WHERE Field11__c = '{login_id}' LIMIT 1"
+        soql = f"SELECT Name, Field13__c, Field41__c FROM CustomObject10__c WHERE Field11__c = '{login_id}' LIMIT 1"
         result = sf.query(soql)
         if result['totalSize'] == 0:
             flash("ユーザー情報が見つかりませんでした")
@@ -538,6 +622,8 @@ def form4():
         record = result['records'][0]
         display_name = record.get('Name', '')
         department = record.get('Field13__c', '')
+        # 取次可能商材でフィルタ (空欄は全商材表示 = 現行動作)
+        user_field76_map = filter_field76_map_for_user(record.get('Field41__c'))
 
         # 既存の処理
         fields = get_field_descriptions()
@@ -550,7 +636,7 @@ def form4():
         return render_template('form4.html',
                                fields=fields,
                                import_fields=list(fields.keys()),
-                               field76_map=field76_map,
+                               field76_map=user_field76_map,
                                basic_auth_user_id=login_id,
                                today=today,
                                postal_code=postal_code,
@@ -573,7 +659,7 @@ def form5():
     
     try:
         # Salesforceからユーザー名と部署名を取得
-        soql = f"SELECT Name, Field13__c FROM CustomObject10__c WHERE Field11__c = '{login_id}' LIMIT 1"
+        soql = f"SELECT Name, Field13__c, Field41__c FROM CustomObject10__c WHERE Field11__c = '{login_id}' LIMIT 1"
         result = sf.query(soql)
         if result['totalSize'] == 0:
             flash("ユーザー情報が見つかりませんでした")
@@ -581,6 +667,8 @@ def form5():
         record = result['records'][0]
         display_name = record.get('Name', '')
         department = record.get('Field13__c', '')
+        # 取次可能商材でフィルタ (空欄は全商材表示 = 現行動作)
+        user_field76_map = filter_field76_map_for_user(record.get('Field41__c'))
 
         # 既存の処理
         fields = get_field_descriptions()
@@ -593,7 +681,7 @@ def form5():
         return render_template('form5.html',
                                fields=fields,
                                import_fields=list(fields.keys()),
-                               field76_map=field76_map,
+                               field76_map=user_field76_map,
                                basic_auth_user_id=login_id,
                                today=today,
                                postal_code=postal_code,
@@ -688,10 +776,11 @@ def submit():
         form_data["Field25__c"] = None
 
     # ==================================================
-    # 🔵 Field76__c マッピング
+    # 🔵 Field76__c マッピング（商材マスタから動的取得、5分キャッシュ）
     # ==================================================
-    if form_data.get('Field76__c') in field76_map:
-        form_data['Field76__c'] = field76_map[form_data['Field76__c']]
+    _product_map = get_product_map()
+    if form_data.get('Field76__c') in _product_map:
+        form_data['Field76__c'] = _product_map[form_data['Field76__c']]
     else:
         form_data['Field76__c'] = None
 
