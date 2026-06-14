@@ -695,6 +695,44 @@ def form5():
         return redirect(url_for('logout'))
 
 
+def stamp_acquirer_snapshot(account_id, login_id):
+    """Account 作成後、フローが実行ユーザー(連携ユーザー=沖中)で上書きする
+    スナップショット項目を、獲得者本人の値で書き戻す。
+
+      Field211__c (獲得者保存)     ← 獲得者 Name
+      Field140__c (所属部署保存)   ← 獲得者 Field13__c (所属部署)
+      Field108__c (レコード所有企業) ← 獲得者 Field10__c (会社名)
+
+    獲得者は Account.Field207__c (= login_id) で CustomObject10__c を特定。
+    フローは作成時のみ発火し更新時には再上書きしないことを実レコードで確認済み。
+    値が取れない項目はスキップ。失敗してもレコード作成自体は妨げない。
+    """
+    if not account_id or not login_id:
+        return
+    try:
+        safe = str(login_id).replace("\\", "\\\\").replace("'", "\\'")
+        res = sf.query(
+            "SELECT Name, Field10__c, Field13__c FROM CustomObject10__c "
+            f"WHERE Field11__c = '{safe}' LIMIT 1"
+        )
+        recs = res.get('records') or []
+        if not recs:
+            print(f"[WARN] stamp_acquirer_snapshot: 獲得者が見つかりません login_id={login_id}")
+            return
+        rec = recs[0]
+        payload = {}
+        if rec.get('Name'):
+            payload['Field211__c'] = rec['Name']        # 獲得者保存
+        if rec.get('Field13__c'):
+            payload['Field140__c'] = rec['Field13__c']  # 所属部署保存
+        if rec.get('Field10__c'):
+            payload['Field108__c'] = rec['Field10__c']  # レコード所有企業
+        if payload:
+            sf.Account.update(account_id, payload)
+    except Exception as e:
+        print(f"[WARN] stamp_acquirer_snapshot 失敗 account={account_id}: {type(e).__name__}: {e}")
+
+
 @app.route('/submit', methods=['POST'])
 @login_required
 def submit():
@@ -800,6 +838,8 @@ def submit():
     # ==================================================
     try:
         result = sf.Account.create(form_data)
+        # フローが沖中で上書きする獲得者保存/所属部署保存/レコード所有企業を書き戻す
+        stamp_acquirer_snapshot(result['id'], form_data.get('Field207__c'))
         message = f"レコード作成成功。ID: {result['id']}"
     except Exception as e:
         message = f"エラー発生: {str(e)}"
@@ -1495,6 +1535,8 @@ def corporateform_submit():
         # Salesforce 作成
         result = sf.Account.create(account_data)
         account_id = result["id"]
+        # フローが沖中で上書きする獲得者保存/所属部署保存/レコード所有企業を書き戻す
+        stamp_acquirer_snapshot(account_id, login_id)
 
         # Zoom 作成
         if ENABLE_ZOOM and call_date and call_time:
