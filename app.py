@@ -1459,7 +1459,7 @@ def corporateform():
     apo_default_comment = """・アウト：
 ・訴求ポイント：
 ・その他アポ段階で得た情報：
-・掲載サイト：ココイコ!　or　Doyou?
+・掲載サイト：ココイコ!　or　Doyou?　or　おもてなし
 ・前確架電先：店舗へ・携帯へ
 """
 
