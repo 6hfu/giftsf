@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
-from simple_salesforce import Salesforce
+from simple_salesforce import Salesforce, format_soql
 from datetime import datetime, timedelta, timezone
 import requests
 from functools import wraps
@@ -64,6 +64,12 @@ field76_map = {
 }
 
 BASIC_AUTH_PASSWORD = "gift2025"
+
+# 登録済みレコード一覧で全員分の受注案件を閲覧できるログインID。
+# 環境変数 VIEW_ALL_LOGIN_IDS にカンマ区切りで設定(未設定なら全員が自分の案件のみ)。
+VIEW_ALL_LOGIN_IDS = {
+    x.strip() for x in os.environ.get("VIEW_ALL_LOGIN_IDS", "").split(",") if x.strip()
+}
 
 ZOOM_ACCOUNT_ID = os.getenv("ZOOM_ACCOUNT_ID")
 ZOOM_CLIENT_ID = os.getenv("ZOOM_CLIENT_ID")
@@ -999,6 +1005,12 @@ def records():
         return redirect(url_for('login'))
 
     try:
+        # VIEW_ALL_LOGIN_IDS は全員分(獲得者あり)、それ以外は自分が獲得者の案件のみ
+        if login_id in VIEW_ALL_LOGIN_IDS:
+            where_clause = "WHERE Field207__c != null"
+        else:
+            where_clause = format_soql("WHERE Field207__c = {}", login_id)
+
         soql = f"""
             SELECT 
                 Id, 
@@ -1012,7 +1024,7 @@ def records():
                 Field171__c, 
                 Field172__c
             FROM Account
-            WHERE Field207__c = '{login_id}'
+            {where_clause}
             ORDER BY CreatedDate DESC
             LIMIT 500
         """
